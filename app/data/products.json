@@ -1,0 +1,86 @@
+[
+  {
+    "id": "KB-101",
+    "name": "Ergonomic Mechanical Keyboard",
+    "description": "RGB backlit mechanical keyboard with tactile blue switches and detachable wrist rest.",
+    "price": 3499.00,
+    "stock": 25
+  },
+  {
+    "id": "KB-102",
+    "name": "Compact Wireless Keyboard",
+    "description": "Ultra-slim 75% wireless keyboard with Bluetooth 5.0 and rechargeable battery.",
+    "price": 1899.00,
+    "stock": 40
+  },
+  {
+    "id": "MS-201",
+    "name": "Wireless Optical Mouse",
+    "description": "Silent-click 2.4GHz wireless mouse with adjustable DPI and battery indicator.",
+    "price": 799.00,
+    "stock": 60
+  },
+  {
+    "id": "MS-202",
+    "name": "Ergonomic Vertical Mouse",
+    "description": "Wireless vertical mouse designed to reduce wrist strain with 6 programmable buttons.",
+    "price": 1599.00,
+    "stock": 30
+  },
+  {
+    "id": "HP-301",
+    "name": "Noise-Cancelling Bluetooth Headphones",
+    "description": "Over-ear active noise cancelling headphones with 30-hour battery life and built-in mic.",
+    "price": 4999.00,
+    "stock": 20
+  },
+  {
+    "id": "HP-302",
+    "name": "Lightweight Wired Gaming Headset",
+    "description": "Stereo gaming headset with 50mm neodymium drivers and flexible boom microphone.",
+    "price": 2199.00,
+    "stock": 35
+  },
+  {
+    "id": "MN-401",
+    "name": "27-Inch 4K UHD IPS Monitor",
+    "description": "Professional 4K display with 99% sRGB color gamut, HDR10 support, and HDMI/DisplayPort.",
+    "price": 22499.00,
+    "stock": 15
+  },
+  {
+    "id": "MN-402",
+    "name": "24-Inch Full HD Office Monitor",
+    "description": "FHD 1080p IPS monitor with 75Hz refresh rate, low blue light mode, and ultra-thin bezels.",
+    "price": 9999.00,
+    "stock": 25
+  },
+  {
+    "id": "WC-501",
+    "name": "1080p Full HD Pro Webcam",
+    "description": "Streaming webcam with dual stereo microphones, auto-focus, and physical privacy shutter.",
+    "price": 2499.00,
+    "stock": 45
+  },
+  {
+    "id": "HB-601",
+    "name": "7-in-1 USB-C Multiport Hub",
+    "description": "Aluminum USB-C hub with 4K HDMI, 100W Power Delivery, SD/TF reader, and 3x USB 3.0.",
+    "price": 1999.00,
+    "stock": 50
+  },
+  {
+    "id": "MC-701",
+    "name": "Studio USB Condenser Microphone",
+    "description": "Cardioid polar pattern USB condenser mic with gain control knob and desktop tripod stand.",
+    "price": 3899.00,
+    "stock": 18
+  },
+  {
+    "id": "LP-801",
+    "name": "Adjustable Aluminum Laptop Stand",
+    "description": "Foldable ventilated ergonomic laptop riser supporting 10 to 17 inch notebooks.",
+    "price": 1299.00,
+    "stock": 75
+  }
+]
