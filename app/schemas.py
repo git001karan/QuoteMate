@@ -1,5 +1,6 @@
 """Data schemas for QuoteMate using Pydantic."""
 
+from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any, List, Optional
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
@@ -93,3 +94,154 @@ class AnalyzeRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     text: str = Field(..., min_length=1, description="Message string to analyze")
+
+
+class IncomingMessage(BaseModel):
+    """Incoming WhatsApp-style event: message ID, sender ID, timestamp and text."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    message_id: str = Field(..., min_length=1, description="Unique incoming message identifier")
+    sender_id: str = Field(..., min_length=1, description="Customer/sender identifier")
+    text: str = Field(default="", description="Message text (may be empty)")
+    timestamp: datetime = Field(
+        default_factory=lambda: datetime.now(timezone.utc),
+        description="UTC timestamp of the incoming event",
+    )
+
+
+class CartLineItem(BaseModel):
+    """Single line in a customer's cart with computed line total."""
+
+    product_id: str = Field(..., description="Catalogue product ID")
+    name: str = Field(..., description="Catalogue product name")
+    unit_price: Decimal = Field(..., description="Unit price in INR")
+    quantity: int = Field(..., ge=1, description="Requested quantity")
+    line_total: Decimal = Field(..., description="unit_price * quantity")
+
+    @field_serializer("unit_price", "line_total")
+    def serialize_money(self, v: Decimal) -> float:
+        """Serialize Decimal money fields to float for JSON output."""
+        return float(round(v, 2))
+
+
+class CartContents(BaseModel):
+    """Full cart for a single sender with subtotal."""
+
+    sender_id: str = Field(..., description="Customer/sender identifier")
+    items: List[CartLineItem] = Field(default_factory=list, description="Cart line items")
+    subtotal: Decimal = Field(default=Decimal("0.00"), description="Sum of all line totals")
+    is_empty: bool = Field(default=True, description="True when the cart has no items")
+
+    @field_serializer("subtotal")
+    def serialize_subtotal(self, v: Decimal) -> float:
+        """Serialize Decimal subtotal to float for JSON output."""
+        return float(round(v, 2))
+
+
+class QuotationLineBreakdown(BaseModel):
+    """Single quotation line using catalogue prices (never customer-supplied amounts)."""
+
+    product_id: str = Field(..., description="Catalogue product ID")
+    name: str = Field(..., description="Catalogue product name snapshot")
+    quantity: int = Field(..., ge=1, description="Requested quantity")
+    unit_price: Decimal = Field(..., description="Authoritative unit price in INR")
+    line_total: Decimal = Field(..., description="unit_price * quantity")
+
+    @field_serializer("unit_price", "line_total")
+    def serialize_money(self, v: Decimal) -> float:
+        """Serialize Decimal money fields to float for JSON output."""
+        return float(round(v, 2))
+
+
+class StockIssue(BaseModel):
+    """Stock or availability problem for a requested product."""
+
+    product_id: str = Field(..., description="Requested product ID")
+    name: str = Field(..., description="Product name if known, otherwise the requested ID")
+    requested_quantity: int = Field(..., ge=0, description="Quantity requested by the customer")
+    available_quantity: int = Field(..., ge=0, description="Current catalogue stock")
+    reason: str = Field(..., description="unknown, unavailable, or insufficient_stock")
+
+
+class QuotationBreakdown(BaseModel):
+    """Full quotation calculation with tax, status, and optional stock issues."""
+
+    quotation_id: Optional[str] = Field(None, description="Persisted quotation identifier")
+    sender_id: str = Field(..., description="Customer/sender identifier")
+    status: str = Field(..., description="DRAFT, CONFIRMED, CANCELLED, or INVALID")
+    items: List[QuotationLineBreakdown] = Field(default_factory=list)
+    subtotal: Decimal = Field(default=Decimal("0.00"), description="Sum of line totals")
+    tax_rate: Decimal = Field(..., description="Configured tax rate as a decimal fraction")
+    tax_amount: Decimal = Field(default=Decimal("0.00"), description="subtotal * tax_rate")
+    total: Decimal = Field(default=Decimal("0.00"), description="subtotal + tax_amount")
+    enquiry_id: Optional[str] = Field(
+        None, description="Enquiry ID, present only after successful confirmation"
+    )
+    stock_issues: List[StockIssue] = Field(default_factory=list)
+    is_valid: bool = Field(False, description="True when stock and catalogue checks passed")
+
+    @field_serializer("subtotal", "tax_amount", "total", "tax_rate")
+    def serialize_decimal_fields(self, v: Decimal) -> float:
+        """Serialize Decimal fields to float for JSON output."""
+        return float(v)
+
+
+class ProcessedMessageReply(BaseModel):
+    """Structured assistant reply produced from an incoming message."""
+
+    message_id: str = Field(..., description="Echo of the processed message ID")
+    sender_id: str = Field(..., description="Customer/sender identifier")
+    reply_text: str = Field(..., description="Assistant reply text")
+    duplicated: bool = Field(
+        False, description="True when the message ID was already processed and replayed"
+    )
+    intent: Optional[str] = Field(None, description="Predicted customer intent")
+    intent_confidence: Optional[float] = Field(None, description="Intent confidence 0..1")
+    needs_clarification: bool = Field(False, description="True when the assistant needs more info")
+    is_unsupported: bool = Field(False, description="True when the request is out-of-domain")
+    conversation_state: Optional[str] = Field(None, description="Current conversation state")
+    cart: Optional[CartContents] = Field(None, description="Sender's cart after processing")
+    quotation_id: Optional[str] = Field(None, description="Active draft or confirmed quotation ID")
+    enquiry_id: Optional[str] = Field(
+        None, description="Enquiry ID assigned only after successful confirmation"
+    )
+    quotation_status: Optional[str] = Field(None, description="Active quotation status")
+    quotation: Optional[QuotationBreakdown] = Field(
+        None, description="Quotation breakdown after draft calculation or confirmation"
+    )
+    handoff_id: Optional[int] = Field(
+        None, description="Handoff record ID, present when a human handoff was created"
+    )
+    handoff_status: Optional[str] = Field(
+        None, description="Status of the handoff record (e.g., PENDING, RESOLVED)"
+    )
+
+
+class HandoffSummary(BaseModel):
+    """Public view of a human-handoff record for agent review."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int = Field(..., description="Handoff record identifier")
+    sender_id: str = Field(..., description="Customer/sender identifier")
+    message_id: Optional[str] = Field(
+        None, description="Originating message ID for traceability"
+    )
+    reason: str = Field(..., description="Reason for escalation")
+    status: str = Field(..., description="Handoff status (PENDING, RESOLVED)")
+    created_at: datetime = Field(..., description="Handoff creation time")
+
+
+class ConversationSummary(BaseModel):
+    """Public view of a per-sender conversation state record."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    sender_id: str = Field(..., description="Customer/sender identifier")
+    state: str = Field(..., description="Current conversation state")
+    pending_product_id: Optional[str] = Field(
+        None, description="Catalogue product ID awaiting follow-up quantity"
+    )
+    created_at: datetime = Field(..., description="Conversation creation time")
+    updated_at: datetime = Field(..., description="Last update time")

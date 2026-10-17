@@ -65,5 +65,49 @@ def init_db(custom_engine: Engine | None = None) -> None:
         or alter existing columns. Future production schema changes should use
         Alembic database migrations.
     """
+    from sqlalchemy import inspect, text
+
     target_engine = custom_engine or engine
     Base.metadata.create_all(bind=target_engine)
+
+    # Safely migrate existing SQLite table if columns were added later
+    with target_engine.connect() as conn:
+        inspector = inspect(target_engine)
+        if "conversations" in inspector.get_table_names():
+            columns = [c["name"] for c in inspector.get_columns("conversations")]
+            if "pending_product_id" not in columns:
+                conn.execute(
+                    text("ALTER TABLE conversations ADD COLUMN pending_product_id VARCHAR(50)")
+                )
+                conn.commit()
+            if "context" not in columns:
+                conn.execute(text("ALTER TABLE conversations ADD COLUMN context TEXT"))
+                conn.commit()
+
+        if "quotations" in inspector.get_table_names():
+            q_columns = [c["name"] for c in inspector.get_columns("quotations")]
+            if "tax_rate" not in q_columns:
+                conn.execute(
+                    text(
+                        "ALTER TABLE quotations ADD COLUMN tax_rate NUMERIC(10, 4) "
+                        "NOT NULL DEFAULT 0.18"
+                    )
+                )
+                conn.commit()
+            if "enquiry_id" not in q_columns:
+                conn.execute(text("ALTER TABLE quotations ADD COLUMN enquiry_id VARCHAR(100)"))
+                conn.commit()
+            if "confirmed_at" not in q_columns:
+                conn.execute(text("ALTER TABLE quotations ADD COLUMN confirmed_at DATETIME"))
+                conn.commit()
+            if "updated_at" not in q_columns:
+                conn.execute(text("ALTER TABLE quotations ADD COLUMN updated_at DATETIME"))
+                conn.commit()
+            conn.execute(
+                text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS uq_quotations_enquiry_id "
+                    "ON quotations(enquiry_id)"
+                )
+            )
+            conn.commit()
+
