@@ -48,8 +48,88 @@ WORD_TO_NUMBER: Dict[str, int] = {
     "hundred": 100,
 }
 
+# Words to ignore when matching product names against clauses
+PROMPT_FLUFF = {
+    "please", "quote", "for", "i", "need", "want", "can", "you", "send", "give",
+    "me", "buy", "calculate", "a", "an", "the", "some", "order", "units", "get", "to",
+    "zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
+}
+
+# Irregular English plurals that must map back to the catalogue noun form
+IRREGULAR_PLURALS: Dict[str, str] = {
+    "mice": "mouse",
+}
+
+
+def normalize_match_token(token: str) -> str:
+    """Reduce a token to its base form for overlap comparisons.
+
+    Handles irregular plurals (mice -> mouse) and simple trailing-'s'
+    stripping (keyboards -> keyboard, hubs -> hub).
+    """
+    if token in IRREGULAR_PLURALS:
+        return IRREGULAR_PLURALS[token]
+    if len(token) > 3 and token.endswith("s"):
+        return token[:-1]
+    return token
+
+
+def extract_content_tokens(text: str) -> List[str]:
+    """Return normalized content tokens with conversational fluff and digits removed."""
+    raw_tokens = [
+        w
+        for w in re.findall(r"\b[a-z0-9-]+\b", text.lower())
+        if w not in PROMPT_FLUFF and not w.isdigit()
+    ]
+    return [normalize_match_token(t) for t in raw_tokens]
+
+
+def tokens_match(a: str, b: str) -> bool:
+    """Return True when two normalized tokens refer to the same word.
+
+    Exact equality always matches. Prefix matching (minimum length 3)
+    tolerates common abbreviations such as 'mic' -> 'microphone' and
+    'usb' -> 'usb-c' without allowing very short tokens to match
+    unrelated words.
+    """
+    if a == b:
+        return True
+    if len(a) >= 3 and b.startswith(a):
+        return True
+    if len(b) >= 3 and a.startswith(b):
+        return True
+    return False
+
+
+def has_meaningful_product_overlap(clause: str, product_name: str) -> bool:
+    """Decide whether a clause shares meaningful content with a product name.
+
+    A high RapidFuzz score alone is not sufficient evidence of a match:
+    generic adjectives shared across categories (e.g. 'wireless' in both
+    'Compact Wireless Keyboard' and 'Wireless Optical Mouse') can inflate
+    token_set_ratio enough to cross the strong-match threshold for the
+    wrong product. The clause must additionally share either:
+
+    - the product name's head noun (its final content token, e.g.
+      'keyboard', 'mouse', 'monitor'), or
+    - at least two content tokens with the product name.
+    """
+    clause_tokens = extract_content_tokens(clause)
+    name_tokens = extract_content_tokens(product_name)
+    if not clause_tokens or not name_tokens:
+        return False
+    shared = {
+        name_token
+        for name_token in name_tokens
+        if any(tokens_match(ct, name_token) for ct in clause_tokens)
+    }
+    if not shared:
+        return False
+    head_token = name_tokens[-1]
+    return head_token in shared or len(shared) >= 2
+
 # RapidFuzz match score thresholds
-STRONG_MATCH_THRESHOLD = 70.0
+STRONG_MATCH_THRESHOLD = 68.0
 AMBIGUOUS_MATCH_THRESHOLD = 52.0
 
 # Minimum intent classification probability threshold (with 6 classes, uniform random is 0.1667)
@@ -218,10 +298,10 @@ class NLPService:
             matched_items: List[MatchedProductItem] = []
             lower_text = text.lower()
 
-            # Split message into candidate segments by punctuation or conjunctions
+            # Split message into candidate clauses by punctuation or conjunctions
             clauses = [
                 c.strip()
-                for c in re.split(r"[,;]|\band\b|\balso\b", lower_text)
+                for c in re.split(r"[,;.!?]|\band\b|\balso\b", lower_text)
                 if c.strip()
             ]
             if not clauses:
@@ -234,17 +314,38 @@ class NLPService:
                 best_score = 0.0
                 best_clause = ""
 
-                # Evaluate match against each clause and the full text
+                # Evaluate match against each clause (raw and with conversational fluff stripped)
                 for clause in clauses:
-                    score = fuzz.token_set_ratio(clause, prod_name_lower)
+                    tokens = [
+                        w for w in re.findall(r"\b[a-z0-9-]+\b", clause)
+                        if w not in PROMPT_FLUFF and not w.isdigit()
+                    ]
+                    clean_clause = " ".join(tokens)
+                    raw_score = fuzz.token_set_ratio(clause, prod_name_lower)
+                    clean_score = (
+                        fuzz.token_set_ratio(clean_clause, prod_name_lower)
+                        if clean_clause
+                        else 0.0
+                    )
+                    score = max(raw_score, clean_score)
                     if score > best_score:
                         best_score = score
                         best_clause = clause
 
-                full_score = fuzz.partial_ratio(lower_text, prod_name_lower)
-                if full_score > best_score:
-                    best_score = max(best_score, full_score)
-                    best_clause = lower_text
+                # Only evaluate full text partial match if single clause
+                if len(clauses) == 1:
+                    full_score = fuzz.partial_ratio(lower_text, prod_name_lower)
+                    if full_score > best_score:
+                        best_score = max(best_score, full_score)
+                        best_clause = lower_text
+
+                # Guard: a candidate must share meaningful content tokens with
+                # the clause. A generic word such as 'wireless' that appears in
+                # many catalogue names cannot independently justify a match;
+                # the clause must match the product's head noun (e.g.
+                # 'mouse', 'keyboard') or at least two of its name tokens.
+                if not has_meaningful_product_overlap(best_clause, prod_name_lower):
+                    continue
 
                 # Evaluate against strong and ambiguous thresholds
                 if best_score >= STRONG_MATCH_THRESHOLD:

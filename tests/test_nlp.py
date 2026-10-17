@@ -165,3 +165,58 @@ def test_12_reproducible_classifier_evaluation():
     assert metrics["evaluation_size"] >= 20
     assert metrics["accuracy"] >= 0.80, f"Expected accuracy >= 0.80, got {metrics['accuracy']}"
     assert "classification_report" in metrics
+
+
+def test_13_generic_word_alone_cannot_cross_match_products():
+    """Regression: a generic shared word ('wireless') must not match an unrelated product.
+
+    Bug reproduced before the fix: 'I need 2 wireless mice, please send a quote'
+    matched both MS-201 (Wireless Optical Mouse) and KB-102 (Compact Wireless
+    Keyboard) at score 76.19 because 'wireless' inflated token_set_ratio above
+    the strong-match threshold. The overlap guard requires the clause to share
+    the product's head noun or at least two name tokens.
+    """
+    result = nlp_service.analyze("I need 2 wireless mice, please send a quote")
+    matched_ids = [p.product_id for p in result.matched_products]
+
+    # The intended mouse is matched with the explicitly stated quantity.
+    assert "MS-201" in matched_ids
+    mouse = next(p for p in result.matched_products if p.product_id == "MS-201")
+    assert mouse.extracted_quantity == 2
+    assert mouse.quantity_missing is False
+    assert mouse.is_ambiguous is False
+
+    # No keyboard may be matched from a mice-only request.
+    assert not any(pid.startswith("KB") for pid in matched_ids)
+
+
+def test_14_reverse_case_keyboard_request_does_not_add_mouse():
+    """Regression: the mirror image of test_13 — keyboards must not pull in a mouse."""
+    result = nlp_service.analyze("I need 2 wireless keyboards, please send a quote")
+    matched_ids = [p.product_id for p in result.matched_products]
+
+    assert any(pid.startswith("KB") for pid in matched_ids)
+    kb = next(p for p in result.matched_products if p.product_id.startswith("KB"))
+    assert kb.extracted_quantity == 2
+
+    assert not any(pid.startswith("MS") for pid in matched_ids)
+
+
+def test_15_multi_product_and_ambiguity_handling_preserved():
+    """The overlap guard must not weaken multi-product or ambiguous matching."""
+    # Multi-product request: keyboards AND mice are both resolved.
+    multi = nlp_service.analyze(
+        "I need three wireless keyboards and two wireless mice. Please prepare a quotation."
+    )
+    multi_ids = [p.product_id for p in multi.matched_products]
+    assert any(pid.startswith("KB") for pid in multi_ids)
+    assert "MS-201" in multi_ids
+    mouse = next(p for p in multi.matched_products if p.product_id == "MS-201")
+    assert mouse.extracted_quantity == 2
+
+    # Category-level ambiguity is preserved: 'monitor' still surfaces both
+    # monitors so downstream clarification can ask the customer to choose.
+    ambiguous = nlp_service.analyze("Please quote for monitor")
+    ambiguous_ids = {p.product_id for p in ambiguous.matched_products}
+    assert "MN-401" in ambiguous_ids
+    assert "MN-402" in ambiguous_ids
