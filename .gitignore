@@ -18,6 +18,7 @@ htmlcov/
 *.db
 *.sqlite3
 quotemate.db
+data/
 
 # Environment variables & secrets
 .env

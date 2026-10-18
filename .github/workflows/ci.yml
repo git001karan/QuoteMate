@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    name: Full automated test suite (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11"]
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # Tests build their own isolated SQLite databases under pytest's tmp_path
+      # and override the get_db dependency; no production data, secrets, or
+      # external services are used. Failures are reported by pytest's exit code.
+      - name: Run full test suite
+        env:
+          ENVIRONMENT: test
+        run: pytest tests/ -v --tb=short
+
+  docker-build:
+    name: Docker image build validation (no push)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      # Build-only validation; the image is never pushed and no registry
+      # credentials are configured.
+      - name: Build Docker image
+        run: docker build --tag quotemate:ci .

@@ -70,13 +70,22 @@
 
 **Result:** 80 passed, 1 warning (httpx/testclient deprecation, not a failure).
 
-### Requirement 12: Documented Azure Deployment Plan — NOT VERIFIED
+### Requirement 12: Documented Azure Deployment Plan — PASS (documented)
 
-**Finding:** No `docs/azure-deployment.md` or any deployment documentation exists in the repository.
+**Documentation:** `docs/azure-plan.md` — App Service for Containers plan with
+sections A–H: architecture, prerequisites and placeholders, container/port/health
+configuration matched to the actual `Dockerfile` (`app.main:app`, `${PORT}`,
+`/health`), database-persistence options with honest verification status,
+environment variables verified against `app/config.py`, Azure CLI step templates
+with charge warnings and no real credentials, CI/CD verification steps, and
+cost/limitations.
 
-**Gap:** The assessment requires a documented Azure deployment plan, but none exists.
+**Verification:** document created and cross-checked against the actual project
+configuration (env-var search, Dockerfile CMD, workflow YAML). 
 
-**Recommended fix:** Create `docs/azure-deployment.md` documenting deployment architecture, ARM/Bicep templates, environment variables, and CI/CD steps.
+**Scope caveat:** This requirement covers the deployment **design**. No Azure
+resources were created, no image was pushed, and no `az` command was executed —
+a live deployment is explicitly out of scope for this milestone.
 
 ---
 
@@ -84,7 +93,7 @@
 
 | Gap | Requirement | Recommended Fix |
 |-----|-------------|-----------------|
-| No Azure deployment documentation | #12 | Create `docs/azure-deployment.md` with deployment architecture, ARM/Bicep templates, environment variables, and CI/CD steps |
+| Azure deployment plan | #12 | **Resolved** — `docs/azure-plan.md` created (plan documented; live deployment intentionally out of scope) |
 
 ---
 
@@ -105,7 +114,7 @@
 
 ## Conclusion
 
-**11 of 12 requirements are PASS.** Requirement 12 (Azure deployment documentation) is NOT VERIFIED — no deployment documentation exists. All functional requirements are implemented and verified by the automated test suite (80 passed, 0 failed).
+**12 of 12 requirements are documented.** Requirement 12 (Azure deployment plan) is now documented in `docs/azure-plan.md` — as a **design document only**: no Azure resources were created and no live deployment has been performed or claimed. All functional requirements are implemented and verified by the automated test suite (80 passed, 0 failed).
 
 
 ### Requirement 4: Independent Carts and Conversation State — PASS
@@ -135,4 +144,4 @@
 | 9 | Duplicate message ID protection | PASS | `app/services/message_service.py` | `tests/test_conversation_cart.py::test_12_duplicate_message_id_rejected_and_idempotent` |
 | 10 | Persistence of conversations and quotations | PASS | `app/database.py`, `app/models.py` | `tests/test_quotation.py::test_13_draft_and_confirmed_quotations_persist_across_sessions` |
 | 11 | Automated tests for required assessment scenarios | PASS | `tests/test_*.py` (80 tests) | Full suite: `pytest tests/` → 80 passed |
-| 12 | Documented Azure deployment plan | NOT VERIFIED | None found | No deployment documentation exists |
+| 12 | Documented Azure deployment plan | PASS (documented) | `docs/azure-plan.md` (architecture, prerequisites, container config, persistence, env/security, CLI steps, CI/CD verification, cost/limits) | Plan document exists and its commands/env vars were cross-checked against the actual codebase; **no live Azure deployment performed or claimed** |
