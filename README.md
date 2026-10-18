@@ -272,7 +272,7 @@ Reference: your message has been logged for review.
 
 - Docker image: `docker build -t quotemate:latest .` then run with a persistent SQLite volume: `docker run --name quotemate -p 8000:8000 -v quotemate-data:/data quotemate:latest`.
 - The image runs as a non-root `appuser`, exposes `/health`, and mounts a persistent SQLite database at `/data`.
-- GitHub Actions CI workflow is at `.github/workflows/ci.yml` and runs `pytest -q` on push to `master` and on pull requests.
+- GitHub Actions CI workflow is at `.github/workflows/ci.yml` and runs `pytest tests/ -v --tb=short` on push and on pull requests (locally reproduced as `.venv\Scripts\python.exe -m pytest tests/ -q`).
 - Hosted GitHub Actions has not been run in this environment; the workflow file is present and locally validated, but CI status on GitHub must be confirmed after the first push.
 ```ini
 APP_NAME=QuoteMate

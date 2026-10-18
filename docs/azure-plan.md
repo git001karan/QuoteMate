@@ -486,7 +486,7 @@ when the demo is over** to stop charges:
 4. **Secrets**: move any future credential into Key Vault references.
 5. **Monitoring/alerting** (App Insights, health-check alerts), automated
    **backups + a restore drill** for the chosen database.
-6. **README and recorded demonstration** (Milestone 11) are still missing.
+6. **Recorded demonstration** (Milestone 11) — `README.md` and `docs/demo-script.md` exist; no demo video has been recorded or claimed.
 7. Optional hardening: image vulnerability scanning, image digest pinning,
    staging slots (needs Standard tier), autoscale policy.
 
