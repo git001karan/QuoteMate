@@ -1,0 +1,165 @@
+{
+  "description": "Held-out NOVELTY test set for QuoteMate. These phrasings were written after the training set was frozen and have zero literal overlap with the training or dev-evaluation splits. Reported once in the README; the model is never tuned on this file.",
+  "samples": [
+    {
+      "text": "hey do the ultrawide monitors come with a warranty",
+      "intent": "product_inquiry"
+    },
+    {
+      "text": "any discounts on bulk mouse orders",
+      "intent": "product_inquiry"
+    },
+    {
+      "text": "kb ka stock khatam hai kya",
+      "intent": "product_inquiry"
+    },
+    {
+      "text": "what about the refurbished keyboard line",
+      "intent": "product_inquiry"
+    },
+    {
+      "text": "headset mein mic built in hai kya",
+      "intent": "product_inquiry"
+    },
+    {
+      "text": "does the webcam support full hd recording",
+      "intent": "product_inquiry"
+    },
+    {
+      "text": "stand kitna weight support karta hai",
+      "intent": "product_inquiry"
+    },
+    {
+      "text": "price badh gaya hai kya mouse ka",
+      "intent": "product_inquiry"
+    },
+    {
+      "text": "mujhe ek keyboard aur do mouse chahiye, quote banao",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "quote for a single USB hub please",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "3 stand aur 2 mic ka estimate bhejo",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "need twelve headsets, send pricing",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "1 monitor lena hai, price batao",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "2 webcam and 1 hub, what would it cost me",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "do keyboards milenge, quotation chahiye",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "7 mechanical keyboards ka quote kar do",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "haan bilkul confirm kar do",
+      "intent": "confirmation"
+    },
+    {
+      "text": "the quote works for me, go on",
+      "intent": "confirmation"
+    },
+    {
+      "text": "sahi hai, order place kar do",
+      "intent": "confirmation"
+    },
+    {
+      "text": "green light, finalize it",
+      "intent": "confirmation"
+    },
+    {
+      "text": "ok I will take it, confirm",
+      "intent": "confirmation"
+    },
+    {
+      "text": "count me in, proceed with the order",
+      "intent": "confirmation"
+    },
+    {
+      "text": "baad mein sochta hoon, abhi cancel",
+      "intent": "decline"
+    },
+    {
+      "text": "budget se bahar hai, mat karo",
+      "intent": "decline"
+    },
+    {
+      "text": "I found a better deal elsewhere, call it off",
+      "intent": "decline"
+    },
+    {
+      "text": "nahi chahiye ab ye",
+      "intent": "decline"
+    },
+    {
+      "text": "undo the order please",
+      "intent": "decline"
+    },
+    {
+      "text": "kya aap international shipping karte ho",
+      "intent": "general_question"
+    },
+    {
+      "text": "invoice mein GST number kaise add karwayein",
+      "intent": "general_question"
+    },
+    {
+      "text": "which courier partner do you use",
+      "intent": "general_question"
+    },
+    {
+      "text": "kya weekends pe bhi delivery hoti hai",
+      "intent": "general_question"
+    },
+    {
+      "text": "bulk order pe negotiation ho sakta hai",
+      "intent": "general_question"
+    },
+    {
+      "text": "do you have a physical store I can visit",
+      "intent": "general_question"
+    },
+    {
+      "text": "bhai song suna do abhi",
+      "intent": "unsupported"
+    },
+    {
+      "text": "can you invest in my startup",
+      "intent": "unsupported"
+    },
+    {
+      "text": "meri girlfriend se baat kara do",
+      "intent": "unsupported"
+    },
+    {
+      "text": "download the latest movies for me",
+      "intent": "unsupported"
+    },
+    {
+      "text": "why is the sky blue answer quickly",
+      "intent": "unsupported"
+    },
+    {
+      "text": "buy cryptocurrency for me with my card",
+      "intent": "unsupported"
+    },
+    {
+      "text": "can you tell me today's weather in Delhi",
+      "intent": "unsupported"
+    }
+  ]
+}

@@ -1,0 +1,159 @@
+{
+  "description": "Demo event script for QuoteMate PS05 in-process demo. Each event is a simulated WhatsApp incoming message. Replayed by scripts/demo.py using FastAPI TestClient against a tmp SQLite DB.",
+  "demo": "QuoteMate PS05 WhatsApp Sales & Quotation Assistant",
+  "version": "1.0",
+  "events": [
+    {
+      "id": "demo-1-multi-product-quote",
+      "title": "Multi-product quote (two independent items with quantities)",
+      "sender_id": "user_alice",
+      "messages": [
+        {
+          "message_id": "msg_alice_001",
+          "sender_id": "user_alice",
+          "text": "2 wireless mice and 1 headset",
+          "timestamp": "2026-01-15T10:00:00Z",
+          "expected_intent": "quotation_request",
+          "expected_needs_clarification": false,
+          "expected_reply_contains": ["MS-201", "HP-302", "₹"]
+        },
+        {
+          "message_id": "msg_alice_002",
+          "sender_id": "user_alice",
+          "text": "yes, confirm",
+          "timestamp": "2026-01-15T10:01:00Z",
+          "expected_intent": "confirmation",
+          "expected_needs_clarification": false,
+          "expected_reply_contains": ["confirmed", "Enquiry ID"]
+        }
+      ]
+    },
+    {
+      "id": "demo-2-missing-quantity",
+      "title": "Missing quantity triggers clarification follow-up",
+      "sender_id": "user_bob",
+      "messages": [
+        {
+          "message_id": "msg_bob_001",
+          "sender_id": "user_bob",
+          "text": "I want a webcam",
+          "timestamp": "2026-01-15T10:05:00Z",
+          "expected_intent": "product_inquiry",
+          "expected_needs_clarification": true,
+          "expected_reply_contains": ["webcam", "quantity", "how many"]
+        },
+        {
+          "message_id": "msg_bob_002",
+          "sender_id": "user_bob",
+          "text": "2 please",
+          "timestamp": "2026-01-15T10:06:00Z",
+          "expected_intent": "quotation_request",
+          "expected_needs_clarification": false,
+          "expected_reply_contains": ["WC-501", "₹"]
+        }
+      ]
+    },
+    {
+      "id": "demo-3-insufficient-stock",
+      "title": "Insufficient stock is flagged before confirmation",
+      "sender_id": "user_charlie",
+      "messages": [
+        {
+          "message_id": "msg_charlie_001",
+          "sender_id": "user_charlie",
+          "text": "70 wireless mice",
+          "timestamp": "2026-01-15T10:10:00Z",
+          "expected_intent": "quotation_request",
+          "expected_needs_clarification": false,
+          "expected_reply_contains": ["MS-201", "stock", "only"]
+        }
+      ]
+    },
+    {
+      "id": "demo-4-duplicate-event",
+      "title": "Duplicate message_id is rejected idempotently",
+      "sender_id": "user_dave",
+      "messages": [
+        {
+          "message_id": "msg_dave_001",
+          "sender_id": "user_dave",
+          "text": "quote for 4 webcams",
+          "timestamp": "2026-01-15T10:15:00Z",
+          "expected_intent": "quotation_request",
+          "expected_duplicated": false,
+          "expected_reply_contains": ["WC-501", "₹"]
+        },
+        {
+          "message_id": "msg_dave_001",
+          "sender_id": "user_dave",
+          "text": "quote for 4 webcams",
+          "timestamp": "2026-01-15T10:15:00Z",
+          "expected_intent": "quotation_request",
+          "expected_duplicated": true,
+          "expected_reply_contains": ["duplicate", "already"]
+        }
+      ]
+    },
+    {
+      "id": "demo-5-two-independent-users",
+      "title": "Two independent users have separate carts and conversations",
+      "sender_id": "user_eve",
+      "messages": [
+        {
+          "message_id": "msg_eve_001",
+          "sender_id": "user_eve",
+          "text": "1 mechanical keyboard",
+          "timestamp": "2026-01-15T10:20:00Z",
+          "expected_intent": "quotation_request",
+          "expected_reply_contains": ["KB-101"]
+        }
+      ]
+    },
+    {
+      "id": "demo-5b-second-user",
+      "title": "Second independent user (part of demo-5)",
+      "sender_id": "user_frank",
+      "messages": [
+        {
+          "message_id": "msg_frank_001",
+          "sender_id": "user_frank",
+          "text": "3 laptop stands please",
+          "timestamp": "2026-01-15T10:20:00Z",
+          "expected_intent": "quotation_request",
+          "expected_reply_contains": ["LP-801"]
+        }
+      ]
+    },
+    {
+      "id": "demo-6-handoff",
+      "title": "Unsupported request triggers human handoff",
+      "sender_id": "user_grace",
+      "messages": [
+        {
+          "message_id": "msg_grace_001",
+          "sender_id": "user_grace",
+          "text": "can you invest in my startup",
+          "timestamp": "2026-01-15T10:25:00Z",
+          "expected_intent": "unsupported",
+          "expected_is_unsupported": true,
+          "expected_reply_contains": ["handoff", "human", "agent"]
+        }
+      ]
+    },
+    {
+      "id": "demo-7-invalid-input",
+      "title": "Invalid input (empty message_id) is rejected with 422",
+      "sender_id": "user_heidi",
+      "messages": [
+        {
+          "message_id": "",
+          "sender_id": "user_heidi",
+          "text": "hello",
+          "timestamp": "2026-01-15T10:30:00Z",
+          "expected_status": 422,
+          "expected_reply_contains": []
+        }
+      ]
+    }
+  ]
+}

@@ -1,225 +1,323 @@
 # QuoteMate — Demo Script (Milestone 11)
 
-**Project:** QuoteMate — AI-Powered WhatsApp Sales and Quotation Assistant
-**Assessment:** Cerevyn Solutions PS05
-**Purpose:** Walk through the core customer-facing flows in order, showing what to type (simulate via `POST /messages`) and what the assistant should reply.
+**Project:** QuoteMate — AI-Powered WhatsApp Sales and Quotation Assistant  
+**Assessment:** Cerevyn Solutions PS05  
+**Purpose:** A timed 3–5 minute live demo script walking through the core customer-facing flows. Each scenario shows what to type (simulated via `POST /messages`) and what the assistant replies.  
+**Automation:** Scenarios 1–6 replay the events in `sample_data/events.json` that `scripts/demo.py` verifies against `sample_data/expected_outputs.json` (run `python scripts/demo.py` — 11 checks, all passing). This includes the explicit-confirmation step: the replay asserts that no `ENQ-` ID appears before the customer confirms, and that the confirmation reply matches `^ENQ-[0-9A-F]{12}$`.
 
-## Prerequisites
+---
 
-- The server is running locally: `uvicorn app.main:app --host 127.0.0.1 --port 8000`
-- The virtual environment is activated: `.\.venv\Scripts\Activate.ps1`
-- Products are seeded (happens automatically on startup).
+## How to run the live demo
 
-Send every request as:
+1. Activate the virtual environment:
 
-```bash
-curl -X POST http://127.0.0.1:8000/messages \
-  -H "Content-Type: application/json" \
-  -d '{"message_id":"<UNIQUE_ID>","sender_id":"<CUSTOMER_ID>","text":"<MESSAGE>"}'
+   ```powershell
+   .venv\Scripts\Activate.ps1
+   ```
+
+2. Start the server:
+
+   ```powershell
+   uvicorn app.main:app --host 127.0.0.1 --port 8000
+   ```
+
+3. Send each request as `POST /messages`:
+
+   ```bash
+   curl -X POST http://127.0.0.1:8000/messages \
+     -H "Content-Type: application/json" \
+     -d '{"message_id":"<UNIQUE_ID>","sender_id":"<CUSTOMER_ID>","text":"<MESSAGE>"}'
+   ```
+
+4. Use a fresh `sender_id` per scenario unless the scenario explicitly continues a previous conversation. The IDs below match `sample_data/events.json`, so you can copy-paste them verbatim.
+
+### Reset the database before every rehearsal (required)
+
+The live server stores every processed `message_id` in a persistent SQLite file (`quotemate.db`) for idempotency, and a confirmation decrements stock. Rehearsing twice against the same file would return `"duplicated": true` for every message and show stock already reduced — which looks broken on camera. **Delete the database and restart the server before each rehearsal:**
+
+```powershell
+# 1. Stop the server (Ctrl+C), then:
+Remove-Item .\quotemate.db -ErrorAction SilentlyContinue
+# 2. Start it again — the lifespan hook re-creates and re-seeds the catalogue:
+uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-Use a fresh `sender_id` per demo scenario unless the scenario explicitly continues a previous conversation. Reusing the same `sender_id` continues that customer's cart and conversation state.
+After the reset, stock is back to its seeded values (MS-201 = 60, HP-302 = 35) and no `message_id` is taken, so every rehearsal starts identical. (`scripts/demo.py` needs no reset — it runs against a throwaway tmp database each time.)
 
-## Scenario 1 — Multi-product quotation request
+---
 
-**Goal:** Show the assistant understanding natural language, adding multiple products to one cart, calculating a draft quotation, and awaiting confirmation.
+## Timing plan (3–5 minutes)
 
-### Step 1 — Send the enquiry
+| Segment | Time |
+|---------|------|
+| Introduction | 0:30 |
+| Scenario 1 — Multi-product quotation + confirmation | 1:15 |
+| Scenario 2 — Missing quantity clarification | 0:45 |
+| Scenario 3 — Insufficient stock | 0:30 |
+| Scenario 4 — Duplicate message_id protection | 0:30 |
+| Scenario 5 — Independent customers (separate carts) | 0:30 |
+| Scenario 6 — Human handoff for out-of-domain request | 0:30 |
+| Conclusion & Q&A | 0:30 |
+| **Total** | **~4:30–5:00** |
+
+---
+
+## Introduction (0:30)
+
+Say: "QuoteMate is an AI-powered WhatsApp sales assistant for PS05. It understands natural-language product enquiries, collects quantities, keeps one cart per customer, calculates quotations with tax, asks for explicit confirmation before creating an enquiry, blocks over-stock requests, and hands unexpected requests to a human. Let me walk you through six scenarios."
+
+---
+
+## Scenario 1 — Multi-product quotation, then explicit confirmation (1:15)
+
+**Goal:** Natural-language extraction of multiple products + quantities, a draft quotation, then an explicit confirmation that creates exactly one enquiry ID.
+
+### Step A — Multi-product request (`event: demo-1-multi-product-quote`)
 
 ```json
 {
-  "message_id": "demo-1-1",
-  "sender_id": "demo-customer-a",
-  "text": "I need 2 wireless mice and 1 gaming keyboard, send a quote"
+  "message_id": "msg_alice_001",
+  "sender_id": "user_alice",
+  "text": "2 wireless mice and 1 headset"
 }
 ```
-## Scenario 2 — Explicit confirmation creates exactly one enquiry
 
-**Goal:** Show that an enquiry ID is only created after the customer explicitly confirms, and that repeating confirmation does not duplicate it.
+**Expected response (verified by demo.py):**
+- `intent`: `quotation_request`
+- `conversation_state`: `AWAITING_CONFIRMATION`
+- `enquiry_id`: `null` — **no enquiry ID exists yet** (also asserted by the replay: the reply must not contain `ENQ-`)
+- Cart contains MS-201 (Wireless Optical Mouse) × 2 and HP-302 (Lightweight Wired Gaming Headset) × 1
+- Reply prints the quotation arithmetic — **these exact numbers are asserted by `demo.py`**:
 
-### Step 2 — Confirm
+  ```text
+  1. Lightweight Wired Gaming Headset (HP-302) x 1 @ Rs 2,199.00 = Rs 2,199.00
+  2. Wireless Optical Mouse (MS-201) x 2 @ Rs 799.00 = Rs 1,598.00
+  Subtotal: Rs 3,797.00
+  Tax (18%): Rs 683.46
+  Total: Rs 4,480.46
+  ```
+
+  Arithmetic: (1 × 2,199) + (2 × 799) = 3,797 · 3,797 × 18% = 683.46 · 3,797 + 683.46 = **4,480.46**.
+
+### Step B — Explicit confirmation (new `message_id`, same `sender_id`)
 
 ```json
 {
-  "message_id": "demo-2-1",
-  "sender_id": "demo-customer-a",
+  "message_id": "msg_alice_002",
+  "sender_id": "user_alice",
   "text": "yes, confirm"
 }
 ```
 
-### Expected response
-
+**Expected response (verified by demo.py):**
 - `conversation_state`: `CONFIRMED`
-- `enquiry_id`: `ENQ-<12 hex chars>` (present for the first time)
+- `enquiry_id`: matches `^ENQ-[0-9A-F]{12}$` — present for the first time (the replay asserts this regex, since the 12 hex chars are random)
 - `quotation_status`: `CONFIRMED`
-- A plain-text reply confirming the order and giving the enquiry reference.
+- Reply: "Thank you! Your quotation has been confirmed. ... Enquiry ID: ENQ-... ... Our sales team will follow up using this enquiry ID."
+- The draft in Step A asserted `enquiry_id: null` (no `ENQ-` in the reply); this step asserts the ID now exists — together they prove **the enquiry ID is created only on confirmation**.
 
-### Step 3 — Repeat the same confirmation
+**What to point out:** "One message, two products, quantities parsed correctly, draft quotation with 18% tax. No enquiry ID yet — only after the customer says 'yes' does the assistant create exactly one `ENQ-...` reference, and stock is now decremented. Re-confirming never duplicates it (covered by `tests/test_quotation.py::test_9`)."
 
-Send the exact same request again (same `message_id`, `demo-2-1`).
-## Scenario 3 — Missing quantity triggers clarification
+---
 
-**Goal:** Show the assistant asking for a quantity when the customer names a product but not how many.
+## Scenario 2 — Missing quantity triggers clarification (0:45)
 
-### Step 4 — New customer, product only
+**Goal:** The assistant asks for a quantity when the customer names a product but not how many, then remembers the pending product across messages from the same sender.
+
+### Step A — Product only (`event: demo-2-missing-quantity`)
 
 ```json
 {
-  "message_id": "demo-3-1",
-  "sender_id": "demo-customer-b",
-  "text": "I need wireless mice"
+  "message_id": "msg_bob_001",
+  "sender_id": "user_bob",
+  "text": "I want a webcam"
 }
 ```
 
-### Expected response
-
+**Expected response (verified by demo.py):**
+- `needs_clarification`: `true`
 - `conversation_state`: `AWAITING_QUANTITY`
-- Pending product remembered: Wireless Optical Mouse (MS-201)
-- Plain-text reply asking: "How many units of Wireless Optical Mouse would you like to add?"
+- Cart is still empty (nothing added yet)
+- Reply asks for a quantity (mentions the webcam and how many units).
 
-### Step 5 — Provide the quantity
+### Step B — Provide the quantity (new `message_id`, same `sender_id`)
 
 ```json
 {
-  "message_id": "demo-3-2",
-  "sender_id": "demo-customer-b",
-  "text": "3"
+  "message_id": "msg_bob_002",
+  "sender_id": "user_bob",
+  "text": "2 please"
 }
 ```
 
-## Scenario 4 — Insufficient stock blocks quotation
+**Expected response (verified by demo.py):**
+- `conversation_state`: `AWAITING_CONFIRMATION`
+- Cart now contains WC-501 (1080p Full HD Pro Webcam) × 2
+- Draft quotation reply (contains WC-501 and the rupee amount).
 
-**Goal:** Show stock validation before any enquiry is created.
+**What to point out:** "The state machine remembers the pending product across messages from the same sender — the customer does not repeat the product name. Nothing enters the cart until the quantity is known."
 
-### Step 6 — New customer, request more than available
+---
 
-KB-101 (Ergonomic Mechanical Keyboard) has stock 25 in `app/data/products.json`.
+## Scenario 3 — Insufficient stock is flagged (0:30)
+
+**Goal:** Stock is validated against the catalogue before a quotation is finalised; over-stock requests are flagged so the customer can adjust.
+
+### Step — Request more than available (`event: demo-3-insufficient-stock`)
+
+MS-201 (Wireless Optical Mouse) has stock **60 when seeded** in `app/data/products.json` — but see the stock note below: after Scenario 1's confirmation it is 58 at this point in the run.
 
 ```json
 {
-  "message_id": "demo-4-1",
-  "sender_id": "demo-customer-c",
-  "text": "I need 30 Ergonomic Mechanical Keyboards"
+  "message_id": "msg_charlie_001",
+  "sender_id": "user_charlie",
+  "text": "70 wireless mice"
 }
 ```
 
-### Expected response
+**Expected response (verified by demo.py):**
+- `intent`: `quotation_request`
+- `needs_clarification`: `true` — the assistant flags the stock problem
+- Cart contains MS-201, but the quotation is invalid — no enquiry ID is created
+- Reply reports the live shortfall: **`insufficient stock (requested 70, available 58)`** — the replay asserts both the word "stock" and the count.
 
-- `is_unsupported`: `false`
-- No `enquiry_id` created.
-- `quotation_status`: remains `DRAFT` or no quotation created.
-- Plain-text reply explaining insufficient stock, e.g.:
-  ```text
-  I cannot prepare a quotation for the following items:
-  - Ergonomic Mechanical Keyboard (KB-101): insufficient stock (requested 30, available 25).
-  No enquiry ID has been created. Please adjust quantities or choose other products.
-  ```
+> **Stock note (order dependence):** the count is **58, not 60**, because this scenario runs *after* Scenario 1's confirmation decremented MS-201 by 2 (60 − 2 = 58). That is the point — confirmation really reduces live stock and Scenario 3 re-reads it. A [database reset](#reset-the-database-before-every-rehearsal-required) restores 60, so **rehearse in order from a fresh reset**, and quote whatever number the reply actually shows (58 in a full run; 60 if you demo this scenario alone immediately after a reset).
 
-### What to point out
+**What to point out:** "The assistant checks live catalogue stock — not a cached value. Requesting 70 triggers a clarification so the customer can correct the quantity, and no quotation or enquiry ID is produced. It will not silently over-promise inventory."
 
-- Stock is validated **before** any enquiry ID is created.
-- Customer gets a specific, actionable message (which product, requested vs available).
+---
 
-## Scenario 5 — Human handoff for unsupported request
+## Scenario 4 — Duplicate message_id protection (0:30)
 
-**Goal:** Show the assistant gracefully handing off requests it cannot handle.
+**Goal:** Replaying the exact same incoming event is rejected idempotently — exactly-once processing for webhook-style retries.
 
-### Step 7 — New customer, unsupported request
+### Step A — First delivery (`event: demo-4-duplicate-event`)
 
 ```json
 {
-  "message_id": "demo-5-1",
-  "sender_id": "demo-customer-d",
-  "text": "Can you order a pepperoni pizza for me?"
+  "message_id": "msg_dave_001",
+  "sender_id": "user_dave",
+  "text": "quote for 4 webcams"
 }
-## Scenario 6 — Duplicate message_id protection (replay)
+```
 
-**Goal:** Show that replaying the exact same incoming event is rejected.
+**Expected response (verified by demo.py):**
+- `duplicated`: `false`
+- `conversation_state`: `AWAITING_CONFIRMATION`
+- Cart contains WC-501 × 4; draft quotation reply (WC-501 + rupee amount).
 
-### Step 8 — Re-send any previous message_id
+### Step B — Exact replay (identical `message_id`, `sender_id`, and `text`)
 
-Pick any `message_id` already used (e.g. `demo-1-1`) and resend it with the same payload.
+Send the identical payload again.
 
-### Expected response
-
+**Expected response (verified by demo.py):**
 - `duplicated`: `true`
-- No state change, no new cart item, no new enquiry.
+- The stored reply is replayed; no second cart update, no second quotation.
 
-### What to point out
+**What to point out:** "Exactly-once processing protects against network retries and accidental double-sends — critical for WhatsApp webhook delivery, where a message may be delivered more than once."
 
-- Exactly-once processing for webhook-style events.
-- Protects against network retries and accidental double-sends.
+---
 
-## Quick reference — all scenario message_ids
+## Scenario 5 — Independent customers keep separate carts (0:30)
 
-| Scenario | sender_id | message_id(s) |
-|---|---|---|
-| 1. Multi-product quote | demo-customer-a | demo-1-1 |
-| 2. Confirm + duplicate | demo-customer-a | demo-2-1 (twice) |
-| 3. Clarification flow | demo-customer-b | demo-3-1, demo-3-2 |
-| 4. Insufficient stock | demo-customer-c | demo-4-1 |
-| 5. Human handoff | demo-customer-d | demo-5-1 |
-| 6. Duplicate replay | (any previous) | reuse any earlier message_id |
+**Goal:** Two different senders never share state — each `sender_id` has its own cart and conversation.
+
+### Step A — First customer (`event: demo-5-two-independent-users`)
+
+```json
+{
+  "message_id": "msg_eve_001",
+  "sender_id": "user_eve",
+  "text": "1 mechanical keyboard"
+}
+```
+
+**Expected response (verified by demo.py):**
+- Cart for `user_eve` contains KB-101 (Ergonomic Mechanical Keyboard) × 1; reply mentions KB-101.
+
+### Step B — Second customer (`event: demo-5b-second-user`)
+
+```json
+{
+  "message_id": "msg_frank_001",
+  "sender_id": "user_frank",
+  "text": "3 laptop stands please"
+}
+```
+
+**Expected response (verified by demo.py):**
+- Cart for `user_frank` contains LP-801 (Adjustable Aluminum Laptop Stand) × 3; reply mentions LP-801.
+- `user_eve`'s cart is untouched by `user_frank`'s message.
+
+**What to point out:** "Carts and conversation state are keyed by `sender_id`. Two customers messaging at the same time never see or modify each other's items."
+
+---
+
+## Scenario 6 — Human handoff for out-of-domain request (0:30)
+
+**Goal:** Requests outside the sales domain create a persisted human handoff record instead of a quotation.
+
+### Step — Unsupported request (`event: demo-6-handoff`)
+
+```json
+{
+  "message_id": "msg_grace_001",
+  "sender_id": "user_grace",
+  "text": "can you invest in my startup"
+}
+```
+
+**Expected response (verified by demo.py):**
+- `intent`: `unsupported`
+- `is_unsupported`: `true`
+- `handoff_id`: an integer (a `HandoffModel` row is persisted with conversation context)
+- No `enquiry_id`; no quotation created
+- Reply explains the request is out of scope and has been passed to the human sales team (contains "human" and "team").
+
+**What to point out:** "Out-of-domain requests never produce quotations. The handoff is persisted with full conversation context, so a human reviewer can follow up. Agents can resolve it via `POST /handoffs/{id}/resolve`."
+
+### Bonus — Input validation (`event: demo-7-invalid-input`)
+
+```json
+{
+  "message_id": "",
+  "sender_id": "user_heidi",
+  "text": "hello"
+}
+```
+
+**Expected response (verified by demo.py):** HTTP `422` — an empty `message_id` is rejected by schema validation before any processing.
+
+---
+
+## Conclusion (0:30)
+
+Say: "That's QuoteMate — six scenarios in under five minutes: natural-language parsing, per-customer carts, draft quotations with tax, explicit confirmation creating exactly one enquiry ID, live stock validation, human handoff for out-of-domain requests, and duplicate-message protection. Every scenario you just saw is replayed and asserted by `scripts/demo.py` on every CI run."
+
+---
+
+## Quick reference — all scenario IDs (from `sample_data/events.json`)
+
+| Scenario | event_id | sender_id | message_id(s) |
+|----------|----------|-----------|---------------|
+| 1. Multi-product + confirm | demo-1-multi-product-quote | user_alice | msg_alice_001 (+ msg_alice_002 to confirm) |
+| 2. Missing quantity | demo-2-missing-quantity | user_bob | msg_bob_001, msg_bob_002 |
+| 3. Insufficient stock | demo-3-insufficient-stock | user_charlie | msg_charlie_001 |
+| 4. Duplicate replay | demo-4-duplicate-event | user_dave | msg_dave_001 (sent twice) |
+| 5. Independent carts | demo-5 / demo-5b | user_eve, user_frank | msg_eve_001, msg_frank_001 |
+| 6. Human handoff | demo-6-handoff | user_grace | msg_grace_001 |
+| Bonus — invalid input | demo-7-invalid-input | user_heidi | "" (empty → 422) |
+
+---
 
 ## What the demo proves end-to-end
 
-1. Natural-language product + quantity extraction.
-2. Per-sender cart and conversation state.
-3. Draft quotation with Decimal-precision tax/totals.
-4. Explicit confirmation before enquiry creation.
-5. Stock validation before enquiry.
-6. Human handoff for out-of-domain requests.
-7. Duplicate `message_id` protection / idempotency.
-8. Persistence across sender sessions (SQLite).
-```
-
-### Expected response
-
-- `is_unsupported`: `true`
-- Plain-text reply explaining the request is out of scope and has been passed to a human, e.g.:
-  ```text
-  I'm sorry, I'm unable to help with that request. This has been passed to our human sales team for assistance. They will get back to you shortly.
-  Reference: your message has been logged for review.
-  ```
-- A `HandoffModel` record is persisted with conversation context.
-
-### What to point out
-
-- Unsupported intents never create quotations or enquiries.
-- The handoff is persisted so a human reviewer can follow up.
-### Expected response
-
-- `conversation_state`: `AWAITING_CONFIRMATION`
-- Cart now contains Wireless Optical Mouse × 3
-- Draft quotation with line totals and tax
-- Plain-text reply summarising the draft and asking to confirm.
-
-### What to point out
-
-- State machine remembers the pending product across messages from the same sender.
-- Written numbers ("three") also work (see test `test_4_follow_up_with_written_number_word`).
-
-### Expected response
-
-- `duplicated`: `true`
-- `enquiry_id`: unchanged — still the same `ENQ-<...>` from step 2.
-- No second enquiry created.
-
-### What to point out
-
-- Explicit confirmation gate: no enquiry until "yes".
-- Idempotency: duplicate `message_id` is rejected; no duplicate enquiries.
-
-### Expected response
-
-- `intent`: `quotation_request`
-- `conversation_state`: `AWAITING_CONFIRMATION`
-- Cart contains Wireless Optical Mouse (MS-201) × 2 and Ergonomic Mechanical Keyboard (KB-101) × 1
-- `quotation_status`: `DRAFT`
-- `enquiry_id`: `null` (not yet confirmed)
-- A plain-text reply summarising the draft quotation and asking the customer to confirm.
-
-### What to point out
-
-- One message, two products, quantities parsed correctly.
-- Draft quotation created with tax; no enquiry ID yet — confirmation is still pending.
+1. Natural-language product + quantity extraction (multiple items in one message).
+2. Per-sender cart and conversation state — no cross-customer leakage.
+3. Draft quotation with Decimal-precision tax/totals (18% default).
+4. Explicit confirmation gate — exactly one `ENQ-<12 hex>` enquiry ID, only on "yes".
+5. Live stock validation before a quotation is finalised.
+6. Human handoff for out-of-domain requests, persisted for follow-up.
+7. Duplicate `message_id` protection / idempotent webhook processing.
+8. Schema validation rejects malformed input (422).
+9. Persistence across sender sessions (SQLite).

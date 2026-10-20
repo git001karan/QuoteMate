@@ -1,0 +1,213 @@
+{
+  "description": "Expected outputs for QuoteMate PS05 demo events. Used by scripts/demo.py to diff actual vs expected. Keywords in reply_contains are checked case-insensitively as substrings of reply_text.",
+  "demo": "QuoteMate PS05 WhatsApp Sales & Quotation Assistant",
+  "version": "1.0",
+  "expected": [
+    {
+      "event_id": "demo-1-multi-product-quote",
+      "_msg_index": 0,
+      "message_id": "msg_alice_001",
+      "sender_id": "user_alice",
+      "expected_status": 200,
+      "expected_intent": "quotation_request",
+      "expected_needs_clarification": false,
+      "expected_is_unsupported": false,
+      "expected_duplicated": false,
+      "reply_contains": [
+        "MS-201",
+        "HP-302",
+        "Rs 1,598.00",
+        "Rs 2,199.00",
+        "Subtotal: Rs 3,797.00",
+        "Tax (18%): Rs 683.46",
+        "Total: Rs 4,480.46"
+      ],
+      "reply_not_contains": [
+        "ENQ-"
+      ],
+      "expected_enquiry_id_absent": true,
+      "cart_should_contain": [
+        "MS-201",
+        "HP-302"
+      ]
+    },
+    {
+      "event_id": "demo-1-multi-product-quote",
+      "_msg_index": 1,
+      "message_id": "msg_alice_002",
+      "sender_id": "user_alice",
+      "expected_status": 200,
+      "expected_intent": "confirmation",
+      "expected_needs_clarification": false,
+      "expected_is_unsupported": false,
+      "expected_duplicated": false,
+      "reply_contains": [
+        "confirmed",
+        "Enquiry ID: ENQ-",
+        "Subtotal: Rs 3,797.00",
+        "Tax (18%): Rs 683.46",
+        "Total: Rs 4,480.46"
+      ],
+      "enquiry_id_matches_regex": "^ENQ-[0-9A-F]{12}$",
+      "cart_should_contain": [
+        "MS-201",
+        "HP-302"
+      ]
+    },
+    {
+      "event_id": "demo-2-missing-quantity",
+      "_msg_index": 0,
+      "message_id": "msg_bob_001",
+      "sender_id": "user_bob",
+      "expected_status": 200,
+      "expected_intent": [
+        "product_inquiry",
+        "quotation_request"
+      ],
+      "expected_needs_clarification": true,
+      "expected_is_unsupported": false,
+      "expected_duplicated": false,
+      "reply_contains": [
+        "webcam",
+        "units"
+      ],
+      "cart_should_contain": []
+    },
+    {
+      "event_id": "demo-2-missing-quantity",
+      "_msg_index": 1,
+      "message_id": "msg_bob_002",
+      "sender_id": "user_bob",
+      "expected_status": 200,
+      "expected_intent": null,
+      "expected_needs_clarification": false,
+      "expected_is_unsupported": false,
+      "expected_duplicated": false,
+      "reply_contains": [
+        "WC-501",
+        "Rs"
+      ],
+      "cart_should_contain": [
+        "WC-501"
+      ]
+    },
+    {
+      "event_id": "demo-3-insufficient-stock",
+      "_msg_index": 0,
+      "message_id": "msg_charlie_001",
+      "sender_id": "user_charlie",
+      "expected_status": 200,
+      "expected_intent": "quotation_request",
+      "expected_needs_clarification": true,
+      "expected_is_unsupported": false,
+      "expected_duplicated": false,
+      "reply_contains": [
+        "MS-201",
+        "stock",
+        "available 58"
+      ],
+      "cart_should_contain": [
+        "MS-201"
+      ]
+    },
+    {
+      "event_id": "demo-4-duplicate-event",
+      "_msg_index": 0,
+      "message_id": "msg_dave_001",
+      "sender_id": "user_dave",
+      "expected_status": 200,
+      "expected_intent": "quotation_request",
+      "expected_needs_clarification": false,
+      "expected_is_unsupported": false,
+      "expected_duplicated": false,
+      "reply_contains": [
+        "WC-501",
+        "Rs"
+      ],
+      "cart_should_contain": [
+        "WC-501"
+      ]
+    },
+    {
+      "event_id": "demo-4-duplicate-event",
+      "_msg_index": 1,
+      "message_id": "msg_dave_001",
+      "sender_id": "user_dave",
+      "expected_status": 200,
+      "expected_intent": null,
+      "expected_needs_clarification": null,
+      "expected_is_unsupported": null,
+      "expected_duplicated": true,
+      "reply_contains": [
+        "WC-501",
+        "Rs"
+      ],
+      "cart_should_contain": [
+        "WC-501"
+      ]
+    },
+    {
+      "event_id": "demo-5-two-independent-users",
+      "_msg_index": 0,
+      "message_id": "msg_eve_001",
+      "sender_id": "user_eve",
+      "expected_status": 200,
+      "expected_intent": "quotation_request",
+      "expected_needs_clarification": false,
+      "expected_is_unsupported": false,
+      "expected_duplicated": false,
+      "reply_contains": [
+        "KB-101"
+      ],
+      "cart_should_contain": [
+        "KB-101"
+      ]
+    },
+    {
+      "event_id": "demo-5b-second-user",
+      "_msg_index": 0,
+      "message_id": "msg_frank_001",
+      "sender_id": "user_frank",
+      "expected_status": 200,
+      "expected_intent": "quotation_request",
+      "expected_needs_clarification": false,
+      "expected_is_unsupported": false,
+      "expected_duplicated": false,
+      "reply_contains": [
+        "LP-801"
+      ],
+      "cart_should_contain": [
+        "LP-801"
+      ]
+    },
+    {
+      "event_id": "demo-6-handoff",
+      "_msg_index": 0,
+      "message_id": "msg_grace_001",
+      "sender_id": "user_grace",
+      "expected_status": 200,
+      "expected_intent": "unsupported",
+      "expected_needs_clarification": true,
+      "expected_is_unsupported": true,
+      "expected_duplicated": false,
+      "reply_contains": [
+        "human",
+        "team"
+      ],
+      "cart_should_contain": []
+    },
+    {
+      "event_id": "demo-7-invalid-input",
+      "_msg_index": 0,
+      "message_id": "",
+      "sender_id": "user_heidi",
+      "expected_status": 422,
+      "expected_intent": null,
+      "expected_needs_clarification": null,
+      "expected_is_unsupported": null,
+      "expected_duplicated": null,
+      "reply_contains": [],
+      "cart_should_contain": []
+    }
+  ]
+}

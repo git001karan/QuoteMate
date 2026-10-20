@@ -1,0 +1,80 @@
+name: Deploy to Azure
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: "production"
+        type: choice
+        options:
+          - staging
+          - production
+      image_tag:
+        description: "Docker image tag to deploy"
+        required: true
+        default: "latest"
+
+# NOTE: This workflow defines OIDC placeholders but references NO repo secrets.
+# All secrets (AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID,
+# ACR credentials, Key Vault references) must be configured in the GitHub
+# repository settings (Settings → Secrets and variables → Actions) before this
+# workflow can run successfully. Do not add real values here.
+
+jobs:
+  deploy:
+    name: Deploy to Azure (${{ github.event.inputs.environment }})
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Azure login via OIDC (placeholder)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+          # OIDC federated identity — no long-lived client secret required.
+          # Enable federated credential on the Azure AD app registration
+          # pointing at this repo's Actions OIDC issuer.
+
+      - name: Log in to ACR (placeholder)
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies and run smoke tests
+        run: |
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+          pytest tests/ -v --tb=short --cov=app --cov-report=term
+
+      - name: Build and push Docker image
+        run: |
+          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/quotemate:${{ github.event.inputs.image_tag }} .
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/quotemate:${{ github.event.inputs.image_tag }}
+
+      - name: Deploy to Azure App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ secrets.APP_SERVICE_NAME }}
+          slot: ${{ github.event.inputs.environment }}
+          images: ${{ secrets.ACR_LOGIN_SERVER }}/quotemate:${{ github.event.inputs.image_tag }}
+
+      - name: Verify deployment health
+        run: |
+          curl -sf https://${{ secrets.APP_SERVICE_NAME }}.azurewebsites.net/health || exit 1
+
+      - name: Output deployment summary
+        run: |
+          echo "Deployed ${{ secrets.ACR_LOGIN_SERVER }}/quotemate:${{ github.event.inputs.image_tag }} to ${{ secrets.APP_SERVICE_NAME }} (${{ github.event.inputs.environment }})"

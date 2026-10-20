@@ -2,7 +2,7 @@
 
 import sqlite3
 import pytest
-from sqlalchemy import Engine, create_engine, event
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
 from app.database import Base, init_db

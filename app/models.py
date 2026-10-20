@@ -11,7 +11,6 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
-    func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -68,12 +67,18 @@ class ConversationModel(Base):
 
 
 class MessageModel(Base):
-    """Incoming and processed WhatsApp simulated message records."""
+    """Incoming and processed WhatsApp simulated message records.
+
+    Idempotency is keyed on the composite ``(sender_id, message_id)`` pair, not
+    on ``message_id`` alone: webhook providers (and test harnesses) may reuse
+    message IDs across different senders, and one sender's reply must never be
+    replayed to another sender.
+    """
 
     __tablename__ = "messages"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    message_id: Mapped[str] = mapped_column(String(100), unique=True, index=True, nullable=False)
+    message_id: Mapped[str] = mapped_column(String(100), index=True, nullable=False)
     sender_id: Mapped[str] = mapped_column(String(100), index=True, nullable=False)
     text: Mapped[str] = mapped_column(Text, nullable=False)
     timestamp: Mapped[datetime] = mapped_column(
@@ -81,6 +86,12 @@ class MessageModel(Base):
     )
     response_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(50), default="RECEIVED", nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "sender_id", "message_id", name="uq_messages_sender_id_message_id"
+        ),
+    )
 
     def __repr__(self) -> str:
         return f"<Message(message_id='{self.message_id}', sender_id='{self.sender_id}', status='{self.status}')>"

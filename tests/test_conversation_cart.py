@@ -9,12 +9,11 @@ import sqlite3
 
 from app.database import Base, get_db
 from app.main import app
-from app.models import CartItemModel, ConversationModel, MessageModel, ProductModel
-from app.schemas import IncomingMessage, ProcessedMessageReply
-from app.services.cart_service import CartService, cart_service
+from app.schemas import IncomingMessage
+from app.services.cart_service import cart_service
 from app.services.catalogue_service import catalogue_service
-from app.services.conversation_service import ConversationService, ConversationState, conversation_service
-from app.services.message_service import MessageService, message_service
+from app.services.conversation_service import ConversationState, conversation_service
+from app.services.message_service import message_service
 
 
 @pytest.fixture

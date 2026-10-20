@@ -56,6 +56,64 @@ def get_db() -> Generator[Session, None, None]:
         db.close()
 
 
+def _migrate_messages_idempotency_key(conn, target_engine: Engine) -> None:
+    """Migrate the messages table from a global message_id unique constraint to
+    a composite (sender_id, message_id) unique constraint.
+
+    Older schema versions declared ``message_id VARCHAR(100) NOT NULL UNIQUE``.
+    That rejected a legitimately independent event when two senders happened to
+    reuse the same provider-level message ID, and worse, the replay path keyed
+    on message_id alone could return one sender's reply to another sender.
+    SQLite cannot drop a column-level UNIQUE without a table rebuild, so the
+    migration rebuilds ``messages`` while preserving all rows.
+    """
+    from sqlalchemy import text
+
+    ddl = conn.execute(
+        text("SELECT sql FROM sqlite_master WHERE type='table' AND name='messages'")
+    ).scalar()
+    if not ddl:
+        return
+    normalized = " ".join(ddl.split()).lower()
+    # Old style: UNIQUE declared inline on the message_id column.
+    old_style = (
+        "message_id varchar(100) not null unique" in normalized
+        or "message_id varchar(100) unique not null" in normalized
+    )
+    if not old_style:
+        return
+
+    conn.execute(
+        text(
+            """
+            CREATE TABLE messages_migrated (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                message_id VARCHAR(100) NOT NULL,
+                sender_id VARCHAR(100) NOT NULL,
+                text TEXT NOT NULL,
+                timestamp DATETIME NOT NULL,
+                response_text TEXT,
+                status VARCHAR(50) NOT NULL DEFAULT 'RECEIVED',
+                CONSTRAINT uq_messages_sender_id_message_id UNIQUE (sender_id, message_id)
+            )
+            """
+        )
+    )
+    conn.execute(
+        text(
+            "INSERT INTO messages_migrated "
+            "(id, message_id, sender_id, text, timestamp, response_text, status) "
+            "SELECT id, message_id, sender_id, text, timestamp, response_text, status "
+            "FROM messages"
+        )
+    )
+    conn.execute(text("DROP TABLE messages"))
+    conn.execute(text("ALTER TABLE messages_migrated RENAME TO messages"))
+    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_messages_message_id ON messages (message_id)"))
+    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_messages_sender_id ON messages (sender_id)"))
+    conn.commit()
+
+
 def init_db(custom_engine: Engine | None = None) -> None:
     """Initialize database tables using SQLAlchemy metadata.
 
@@ -110,4 +168,7 @@ def init_db(custom_engine: Engine | None = None) -> None:
                 )
             )
             conn.commit()
+
+        if "messages" in inspector.get_table_names():
+            _migrate_messages_idempotency_key(conn, target_engine)
 

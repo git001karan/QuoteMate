@@ -129,6 +129,31 @@ class HandoffService:
             if owns_session:
                 session.close()
 
+    def get_pending_handoffs(
+        self, db: Optional[Session] = None
+    ) -> List[HandoffModel]:
+        """Return all PENDING handoff records across senders, newest first.
+
+        This is the human agent's work queue: only PENDING records are shown so
+        resolved escalations do not clutter the list.
+        """
+        owns_session = False
+        session = db
+        if session is None:
+            session = SessionLocal()
+            owns_session = True
+
+        try:
+            stmt = (
+                select(HandoffModel)
+                .where(HandoffModel.status == "PENDING")
+                .order_by(HandoffModel.created_at.desc())
+            )
+            return list(session.scalars(stmt).all())
+        finally:
+            if owns_session:
+                session.close()
+
     def mark_resolved(
         self, handoff_id: int, db: Optional[Session] = None
     ) -> Optional[HandoffModel]:

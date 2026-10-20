@@ -11,7 +11,6 @@ from app.schemas import Product
 from app.services.catalogue_service import (
     CatalogueService,
     CatalogueValidationError,
-    ProductNotFoundError,
 )
 
 client = TestClient(app)

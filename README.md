@@ -142,7 +142,7 @@ pytest tests/
 
 Expected result:
 ```text
-80 passed, 1 warning in ~25s
+90 passed, 1 warning in ~25s
 ```
 
 The suite covers:
@@ -151,7 +151,8 @@ The suite covers:
 - `tests/test_conversation_cart.py` — separate carts, quantity entry, confirmation/decline, duplicates, persistence.
 - `tests/test_quotation.py` — line totals, tax, rounding, stock issues, enquiry lifecycle.
 - `tests/test_handoff.py` — handoff creation, context, duplicate protection, isolation, persistence.
-- `tests/test_nlp.py` — intent classification, product matching, quantity extraction, and the wireless-mouse regression fix.
+- `tests/test_nlp.py` — intent classification, product matching, quantity extraction, typo/paraphrase tolerance.
+- `tests/test_demo_replay.py` — end-to-end demo replay against `sample_data/events.json` vs `sample_data/expected_outputs.json`.
 
 ## API endpoints and verified request examples
 
@@ -254,6 +255,23 @@ I cannot prepare a quotation for the following items:
 No enquiry ID has been created. Please adjust quantities or choose other products.
 ```
 
+### Greeting / thanks / farewell (small talk)
+
+```bash
+curl -X POST http://127.0.0.1:8000/messages \
+  -H "Content-Type: application/json" \
+  -d '{"message_id":"MSG-HI","sender_id":"alice_001","text":"hi"}'
+```
+
+Expected assistant response:
+```text
+Hello! 👋 Welcome to QuoteMate. I'm your sales assistant — I can help you browse our electronics catalogue, check prices and stock, and prepare a quotation.
+
+What are you looking for today?
+```
+
+Bare greetings (`hi`, `hello`, `hey there`, `good morning`), thanks (`thanks`, `thx a lot`, `cheers`), and farewells (`bye`, `goodbye`, `ttyl`) are detected deterministically before the ML classifier and answered directly — they never escalate to a human handoff and never disturb a pending quotation. A greeting embedded in a real request (`"hi, I need 2 keyboards"`) is still classified by its true purchase intent.
+
 ### Human handoff for unsupported request
 
 ```bash
@@ -291,14 +309,107 @@ DEFAULT_TAX_RATE=0.18
 - On startup the lifespan hook runs `init_db()`, then `catalogue_service.seed_catalogue_if_empty()`, which seeds products from `app/data/products.json` only when `ProductModel` rows are missing. Existing rows are never deleted or overwritten.
 - The local file is `quotemate.db`. It is git-ignored; every pytest run uses an isolated `tmp_path` SQLite database.
 - Dockerfile note: the image copies `app/data/products.json` and `sample_data/messages_dataset.json` at build time because both are read at import/startup. Container default `DATABASE_URL` points to `/data/quotemate.db`. Mount a persistent volume at `/data` to survive container restarts.
-├── .gitignore
-├── .github/workflows/ci.yml
-└── README.md
-```
-| Tests | pytest + FastAPI TestClient |
-| Container | Docker (`Dockerfile`) + GitHub Actions CI |
-- **Explicit confirmation** — no enquiry ID is created until the sender confirms; repeated confirmation does not create duplicates.
-- **Stock validation** — unknown, unavailable, and insufficient-stock issues are returned before any enquiry is created.
-- **Human handoff** — unsupported requests create a persisted `HandoffModel` with conversation context.
+
+## CI / GitHub Actions
+
+`.github/workflows/ci.yml` runs on every push/PR:
+
+| Job | What it validates |
+|-----|-------------------|
+| `lint` | `ruff check app/ scripts/ tests/` — zero lint errors |
+| `test` | `pytest tests/ --cov=app` — all tests pass, coverage XML uploaded as artifact |
+| `node` | Frontend `npm ci` + `npm run build` |
+| `docker-build` | `docker build --tag quotemate:ci .` — image builds, tar uploaded as artifact |
+
+Hosted GitHub Actions has not been run in this environment; the workflow files are present and locally validated, but CI status on GitHub must be confirmed after the first push.
+
+## NLP evaluation results (honest reporting)
+
+The intent classifier is trained on 152 Hinglish/typo/short-form training samples and evaluated on two held-out sets:
+
+| Dataset | Size | Accuracy | Notes |
+|---------|------|----------|-------|
+| Dev evaluation split (inside `messages_dataset.json`) | 24 | **91.67%** | 22/24 correct; errors: 1 `general_question` → `unsupported`, 1 `unsupported` → `product_inquiry` |
+| Held-out novelty set (`novelty_test.json`) | 40 | **72.50%** | 29/40 correct; novel phrasings the model has never seen |
+
+The novelty set has **zero literal overlap** with training/dev data. Full per-class metrics and confusion matrices are stored in `sample_data/nlp_evaluation_results.json`.
+
+Novelty-set accuracy is honestly lower because it contains genuinely new phrasings (e.g. "can you tell me today's weather in Delhi", "want to order 2 hubs and 1 stand, how much total") that the TF-IDF + LogisticRegression classifier hasn't seen during training. This is expected behaviour for a small-footprint classifier and is documented here rather than hidden.
+
+## NLP robustness tests
+
+Tests `test_22` through `test_25` in `tests/test_nlp.py` verify typo tolerance ("keybord", "wirles", "moniter", "headphons", "webcm", "microfon") and paraphrase handling ("Are there any mechanical typing boards available?", "i want 5 usb hubs, send quote", etc.).
+
 - **Duplicate protection** — identical `message_id` is rejected with `duplicated: true`.
 - **Persistence** — SQLite stores conversations, carts, quotations, handoffs, and message events.
+
+## Frontend (React + TypeScript)
+
+The QuoteMate frontend is a premium React/TypeScript SPA in `frontend/`, built with Vite, Tailwind CSS, and Framer Motion. It consumes the real FastAPI backend at `http://127.0.0.1:8000`.
+
+### Prerequisites
+
+- Node.js 18+
+- Backend running locally (`uvicorn app.main:app --host 127.0.0.1 --port 8000`)
+
+### Install
+
+```bash
+cd frontend
+npm install
+```
+
+### Development server
+
+```bash
+cd frontend
+npm run dev
+```
+
+Opens `http://localhost:5173` with hot reload. The proxy target is configured in `vite.config.ts`.
+
+### Production build
+
+```bash
+cd frontend
+npm run build
+```
+
+Runs `tsc -b` (TypeScript type-check) followed by `vite build` to `frontend/dist/`.
+
+### Preview production build
+
+```bash
+cd frontend
+npm run preview
+```
+
+### Tests
+
+```bash
+cd frontend
+npm run test
+```
+
+Runs the Vitest suite (jsdom environment) covering utilities, API client, hooks, and components.
+
+### Lint
+
+```bash
+cd frontend
+npm run lint
+```
+
+### Views
+
+| View | Description |
+|------|-------------|
+| **Workspace** | Conversation timeline, message composer, quotation inspector with confirm/decline, cart actions |
+| **Catalogue** | Product browsing with client-side search/filter, add-to-cart via backend |
+| **Conversations** | Sender/session list for switching between customer conversations |
+
+### Key design principles
+
+- **Backend is source of truth** — no fabricated enquiry IDs, stock levels, or totals; all data comes from the FastAPI API.
+- **Idempotent retries** — each message carries a unique `message_id`; retries reuse the same ID so the backend replays the earlier outcome instead of duplicating actions.
+- **Offline resilience** — `ConnectionBanner` shows backend status and auto-recovers when the service returns.

@@ -2,7 +2,7 @@
 
 from decimal import Decimal
 import pytest
-from sqlalchemy import create_engine, select, inspect, event, Engine
+from sqlalchemy import create_engine, inspect, event
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.exc import IntegrityError
 import sqlite3
@@ -10,11 +10,8 @@ import sqlite3
 from app.database import Base, get_db
 from app.models import (
     ProductModel,
-    ConversationModel,
     MessageModel,
     CartItemModel,
-    QuotationModel,
-    HandoffModel,
 )
 from app.services.catalogue_service import (
     CatalogueService,

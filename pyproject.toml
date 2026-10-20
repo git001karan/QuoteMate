@@ -1,0 +1,5 @@
+[tool.pytest.ini_options]
+markers = [
+    "demo: demo replay test against sample_data/events.json",
+]
+testpaths = ["tests"]

@@ -1,9 +1,21 @@
 """Data schemas for QuoteMate using Pydantic."""
 
+import re
 from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any, List, Optional
 from pydantic import BaseModel, ConfigDict, Field, field_serializer, field_validator
+
+# Characters accepted in message_id / sender_id. WhatsApp-style IDs, phone
+# numbers, UUIDs, and email-like handles are all valid; anything outside this
+# set (control characters, quotes, HTML, whitespace runs) is rejected with 422.
+_ID_SAFE_PATTERN = re.compile(r"^[A-Za-z0-9_.:@+\-]{1,100}$")
+
+# ISO-8601 timestamp, e.g. 2026-10-18T09:30:00Z or 2026-10-18T09:30:00+05:30
+_ISO_TIMESTAMP_PATTERN = re.compile(
+    r"^\d{4}-\d{2}-\d{2}[Tt ]\d{2}:\d{2}(:\d{2}(\.\d{1,6})?)?"
+    r"([Zz]|[+\-]\d{2}:?\d{2})?$"
+)
 
 
 class Product(BaseModel):
@@ -97,7 +109,16 @@ class AnalyzeRequest(BaseModel):
 
 
 class IncomingMessage(BaseModel):
-    """Incoming WhatsApp-style event: message ID, sender ID, timestamp and text."""
+    """Incoming WhatsApp-style event: message ID, sender ID, timestamp and text.
+
+    Validation contract (all violations return HTTP 422 with a clear message):
+    - ``message_id`` / ``sender_id``: 1-100 characters from ``[A-Za-z0-9_.:@+-]``
+      (WhatsApp-style IDs, phone numbers, UUIDs and email-like handles).
+    - ``timestamp``: ISO-8601. Timezone-aware values are stored as given;
+      naive values are assumed to be UTC. Garbage strings are rejected.
+    - ``text``: non-empty after stripping whitespace/emoji, at most 1000 chars.
+      Emoji and other unicode are accepted inside otherwise-valid text.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
@@ -108,6 +129,58 @@ class IncomingMessage(BaseModel):
         default_factory=lambda: datetime.now(timezone.utc),
         description="UTC timestamp of the incoming event",
     )
+
+    @field_validator("message_id", "sender_id")
+    @classmethod
+    def validate_id_charset(cls, v: Any, info) -> str:
+        """Reject empty or unsafe identifiers with an explicit 422 message."""
+        field_name = info.field_name
+        if not isinstance(v, str) or not v.strip():
+            raise ValueError(f"{field_name} must be a non-empty string.")
+        value = v.strip()
+        if len(value) > 100:
+            raise ValueError(f"{field_name} must be at most 100 characters long.")
+        if not _ID_SAFE_PATTERN.match(value):
+            raise ValueError(
+                f"{field_name} contains unsupported characters. Only letters, digits "
+                "and _.:@+- are allowed (e.g. 'demo-user-1' or '+15551234567')."
+            )
+        return value
+
+    @field_validator("timestamp", mode="before")
+    @classmethod
+    def validate_timestamp(cls, v: Any) -> datetime:
+        """Accept ISO-8601 timestamps; assume UTC for naive values; reject garbage."""
+        if isinstance(v, str):
+            raw = v.strip()
+            if not _ISO_TIMESTAMP_PATTERN.match(raw):
+                raise ValueError(
+                    "timestamp must be an ISO-8601 datetime, e.g. "
+                    "'2026-10-18T09:30:00Z' or '2026-10-18T09:30:00+05:30'."
+                )
+            v = raw.replace("Z", "+00:00").replace("z", "+00:00")
+            return datetime.fromisoformat(v)
+        if isinstance(v, datetime):
+            if v.tzinfo is None:
+                # Naive timestamps are assumed to be UTC (documented contract).
+                return v.replace(tzinfo=timezone.utc)
+            return v
+        raise ValueError(
+            "timestamp must be an ISO-8601 datetime, e.g. '2026-10-18T09:30:00Z'."
+        )
+
+    @field_validator("text", mode="before")
+    @classmethod
+    def validate_text(cls, v: Any) -> str:
+        """Normalize text: strip edges, enforce non-empty and max length."""
+        if v is None:
+            return ""
+        if not isinstance(v, str):
+            raise ValueError("text must be a string.")
+        value = v.strip()
+        if len(value) > 1000:
+            raise ValueError("text must be at most 1000 characters long.")
+        return value
 
 
 class CartLineItem(BaseModel):
@@ -178,6 +251,13 @@ class QuotationBreakdown(BaseModel):
     enquiry_id: Optional[str] = Field(
         None, description="Enquiry ID, present only after successful confirmation"
     )
+    valid_until: Optional[datetime] = Field(
+        None,
+        description=(
+            "Quote validity deadline (confirmation/creation time + QUOTE_VALIDITY_DAYS). "
+            "Informational only; no automatic expiry is enforced."
+        ),
+    )
     stock_issues: List[StockIssue] = Field(default_factory=list)
     is_valid: bool = Field(False, description="True when stock and catalogue checks passed")
 
@@ -245,3 +325,19 @@ class ConversationSummary(BaseModel):
     )
     created_at: datetime = Field(..., description="Conversation creation time")
     updated_at: datetime = Field(..., description="Last update time")
+
+
+class TranscriptEntry(BaseModel):
+    """Single turn of a customer transcript (incoming event + assistant reply)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    message_id: str = Field(..., description="Incoming message identifier")
+    direction: str = Field(
+        ..., description="'in' for the customer event, 'out' for the assistant reply"
+    )
+    text: str = Field(..., description="Message or reply text")
+    timestamp: datetime = Field(..., description="Event timestamp (UTC)")
+    status: Optional[str] = Field(
+        None, description="Processing status of the incoming event (e.g. PROCESSED)"
+    )

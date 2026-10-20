@@ -5,7 +5,7 @@ Customer-supplied amounts are never used. Draft calculation does not
 decrement inventory; stock is reduced only after a successful confirmation.
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal, ROUND_HALF_UP
 from typing import Optional
 import uuid
@@ -14,7 +14,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
-from app.config import DEFAULT_TAX_RATE
+from app.config import DEFAULT_TAX_RATE, QUOTE_VALIDITY_DAYS
 from app.database import SessionLocal
 from app.models import ProductModel, QuotationItemModel, QuotationModel
 from app.schemas import QuotationBreakdown, QuotationLineBreakdown, StockIssue
@@ -70,6 +70,10 @@ def format_quotation_text(breakdown: QuotationBreakdown, *, heading: str | None 
     lines.append(f"Total: Rs {breakdown.total:,.2f}")
     if breakdown.enquiry_id:
         lines.append(f"Enquiry ID: {breakdown.enquiry_id}")
+    if breakdown.valid_until:
+        lines.append(
+            f"Quote valid until: {breakdown.valid_until.strftime('%Y-%m-%d %H:%M UTC')}"
+        )
     return "\n".join(lines)
 
 
@@ -472,6 +476,52 @@ class QuotationService:
             if owns_session:
                 session.close()
 
+    def get_by_enquiry_id(
+        self, enquiry_id: str, db: Optional[Session] = None
+    ) -> Optional[QuotationModel]:
+        """Return the confirmed quotation carrying the given enquiry ID."""
+        owns_session = False
+        session = db
+        if session is None:
+            session = SessionLocal()
+            owns_session = True
+
+        try:
+            return session.scalar(
+                select(QuotationModel)
+                .options(selectinload(QuotationModel.items))
+                .where(QuotationModel.enquiry_id == enquiry_id)
+            )
+        finally:
+            if owns_session:
+                session.close()
+
+    def list_all_for_admin(
+        self, db: Optional[Session] = None
+    ) -> list[QuotationModel]:
+        """Return every quotation (all senders), newest first. Admin/inspection use."""
+        owns_session = False
+        session = db
+        if session is None:
+            session = SessionLocal()
+            owns_session = True
+
+        try:
+            return list(
+                session.scalars(
+                    select(QuotationModel)
+                    .options(selectinload(QuotationModel.items))
+                    .order_by(QuotationModel.created_at.desc())
+                ).all()
+            )
+        finally:
+            if owns_session:
+                session.close()
+
+    def breakdown_for_model(self, quotation: QuotationModel) -> QuotationBreakdown:
+        """Public helper: convert a stored quotation row into a breakdown schema."""
+        return self._to_breakdown(quotation, is_valid=True)
+
     def _cart_matches_quotation(
         self, requested: list[tuple[str, int]], quotation: QuotationModel
     ) -> bool:
@@ -575,6 +625,15 @@ class QuotationService:
             )
             for item in quotation.items
         ]
+        # Optional quote-validity window: anchored on confirmation time for
+        # confirmed quotations and on creation time for drafts. Informational
+        # only — no automatic expiry is enforced (documented in README).
+        anchor = quotation.confirmed_at or quotation.created_at
+        valid_until: Optional[datetime] = None
+        if anchor is not None:
+            if anchor.tzinfo is None:
+                anchor = anchor.replace(tzinfo=timezone.utc)
+            valid_until = anchor + timedelta(days=QUOTE_VALIDITY_DAYS)
         return QuotationBreakdown(
             quotation_id=quotation.quotation_id,
             sender_id=quotation.sender_id,
@@ -585,6 +644,7 @@ class QuotationService:
             tax_amount=money(quotation.tax),
             total=money(quotation.total),
             enquiry_id=quotation.enquiry_id,
+            valid_until=valid_until,
             stock_issues=[],
             is_valid=is_valid,
         )

@@ -9,105 +9,711 @@
     "unsupported"
   ],
   "training": [
-    {"text": "Do you have mechanical keyboards available in stock?", "intent": "product_inquiry"},
-    {"text": "Are wireless mice currently in stock?", "intent": "product_inquiry"},
-    {"text": "What is the price of the 27 inch 4k monitor?", "intent": "product_inquiry"},
-    {"text": "Tell me about your noise cancelling headphones.", "intent": "product_inquiry"},
-    {"text": "Is the 1080p pro webcam available right now?", "intent": "product_inquiry"},
-    {"text": "Do you sell USB-C multiport hubs?", "intent": "product_inquiry"},
-    {"text": "What are the specs for the studio condenser microphone?", "intent": "product_inquiry"},
-    {"text": "Do you carry aluminum laptop stands?", "intent": "product_inquiry"},
-    {"text": "Show me your gaming headsets please.", "intent": "product_inquiry"},
-    {"text": "How much does the vertical mouse cost?", "intent": "product_inquiry"},
-    {"text": "Are compact wireless keyboards available?", "intent": "product_inquiry"},
-    {"text": "Check availability of 24-inch full HD office monitors.", "intent": "product_inquiry"},
-
-    {"text": "I need three wireless keyboards and two wireless mice. Please prepare a quotation.", "intent": "quotation_request"},
-    {"text": "Please provide a formal quote for two mechanical keyboards.", "intent": "quotation_request"},
-    {"text": "Can you prepare a quotation for five gaming headsets and one USB hub?", "intent": "quotation_request"},
-    {"text": "I want to buy four 4K monitors, please send me a quote.", "intent": "quotation_request"},
-    {"text": "Generate a quotation for one studio USB microphone.", "intent": "quotation_request"},
-    {"text": "Quote me for four ergonomic vertical mice please.", "intent": "quotation_request"},
-    {"text": "I need two laptop stands and three webcams, what will be the total price with taxes?", "intent": "quotation_request"},
-    {"text": "Please prepare a price estimate for three office monitors.", "intent": "quotation_request"},
-    {"text": "Can I get a quotation for one compact keyboard and two mice?", "intent": "quotation_request"},
-    {"text": "Please give me an official price quote for 10 USB hubs.", "intent": "quotation_request"},
-    {"text": "I want a quote for 2 noise-cancelling headphones and 1 webcam.", "intent": "quotation_request"},
-    {"text": "Could you calculate a quote for five mechanical keyboards?", "intent": "quotation_request"},
-
-    {"text": "Yes, please confirm this quotation.", "intent": "confirmation"},
-    {"text": "Looks good, proceed with the quotation.", "intent": "confirmation"},
-    {"text": "I confirm the quote, please go ahead.", "intent": "confirmation"},
-    {"text": "Yes, confirmed. Please place the order.", "intent": "confirmation"},
-    {"text": "That price is acceptable, please confirm it.", "intent": "confirmation"},
-    {"text": "Confirmed, proceed with this enquiry.", "intent": "confirmation"},
-    {"text": "Yes I want to place this order now.", "intent": "confirmation"},
-    {"text": "The quotation looks great, please finalize it.", "intent": "confirmation"},
-    {"text": "Approved, please create the confirmed quotation.", "intent": "confirmation"},
-    {"text": "Yes, go ahead and confirm.", "intent": "confirmation"},
-
-    {"text": "No, please cancel this quotation.", "intent": "decline"},
-    {"text": "That is too expensive for me, cancel the request.", "intent": "decline"},
-    {"text": "No thanks, I want to cancel my draft quotation.", "intent": "decline"},
-    {"text": "I do not wish to proceed, please cancel.", "intent": "decline"},
-    {"text": "Please discard this quotation, not interested.", "intent": "decline"},
-    {"text": "Cancel the order, I changed my mind.", "intent": "decline"},
-    {"text": "No, decline this quote please.", "intent": "decline"},
-    {"text": "Please clear my cart and cancel the quote.", "intent": "decline"},
-    {"text": "Decline the quotation.", "intent": "decline"},
-    {"text": "I want to reject this quote.", "intent": "decline"},
-
-    {"text": "What are your business operating hours?", "intent": "general_question"},
-    {"text": "Where is your office or warehouse located?", "intent": "general_question"},
-    {"text": "What payment methods do you support on WhatsApp?", "intent": "general_question"},
-    {"text": "Do you provide a manufacturer warranty on electronics products?", "intent": "general_question"},
-    {"text": "What is your return and exchange policy?", "intent": "general_question"},
-    {"text": "How long does shipping usually take across India?", "intent": "general_question"},
-    {"text": "Are delivery charges included in the quotation?", "intent": "general_question"},
-    {"text": "How can I contact a human customer support agent?", "intent": "general_question"},
-    {"text": "Can I pick up my orders directly in person?", "intent": "general_question"},
-    {"text": "What is your standard cancellation policy?", "intent": "general_question"},
-
-    {"text": "Can you repair my broken iPhone screen today?", "intent": "unsupported"},
-    {"text": "I want to apply for a software engineer job at your company.", "intent": "unsupported"},
-    {"text": "Can you order a pepperoni pizza for me?", "intent": "unsupported"},
-    {"text": "Tell me a funny joke about programming.", "intent": "unsupported"},
-    {"text": "What is the weather forecast in Bangalore tomorrow?", "intent": "unsupported"},
-    {"text": "Do you sell air conditioners and washing machines?", "intent": "unsupported"},
-    {"text": "Can I get a personal loan from your company?", "intent": "unsupported"},
-    {"text": "Write a python script to solve the knapsack problem.", "intent": "unsupported"},
-    {"text": "Can you hack someone's social media account for me?", "intent": "unsupported"},
-    {"text": "Where can I book cheap flight tickets to Goa?", "intent": "unsupported"}
+    {
+      "text": "Do you have mechanical keyboards available in stock?",
+      "intent": "product_inquiry"
+    },
+    {
+      "text": "Are wireless mice currently in stock?",
+      "intent": "product_inquiry"
+    },
+    {
+      "text": "What is the price of the 27 inch 4k monitor?",
+      "intent": "product_inquiry"
+    },
+    {
+      "text": "Tell me about your noise cancelling headphones.",
+      "intent": "product_inquiry"
+    },
+    {
+      "text": "Is the 1080p pro webcam available right now?",
+      "intent": "product_inquiry"
+    },
+    {
+      "text": "Do you sell USB-C multiport hubs?",
+      "intent": "product_inquiry"
+    },
+    {
+      "text": "What are the specs for the studio condenser microphone?",
+      "intent": "product_inquiry"
+    },
+    {
+      "text": "Do you carry aluminum laptop stands?",
+      "intent": "product_inquiry"
+    },
+    {
+      "text": "Show me your gaming headsets please.",
+      "intent": "product_inquiry"
+    },
+    {
+      "text": "How much does the vertical mouse cost?",
+      "intent": "product_inquiry"
+    },
+    {
+      "text": "Are compact wireless keyboards available?",
+      "intent": "product_inquiry"
+    },
+    {
+      "text": "Check availability of 24-inch full HD office monitors.",
+      "intent": "product_inquiry"
+    },
+    {
+      "text": "I need three wireless keyboards and two wireless mice. Please prepare a quotation.",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "Please provide a formal quote for two mechanical keyboards.",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "Can you prepare a quotation for five gaming headsets and one USB hub?",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "I want to buy four 4K monitors, please send me a quote.",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "Generate a quotation for one studio USB microphone.",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "Quote me for four ergonomic vertical mice please.",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "I need two laptop stands and three webcams, what will be the total price with taxes?",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "Please prepare a price estimate for three office monitors.",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "Can I get a quotation for one compact keyboard and two mice?",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "Please give me an official price quote for 10 USB hubs.",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "I want a quote for 2 noise-cancelling headphones and 1 webcam.",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "Could you calculate a quote for five mechanical keyboards?",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "Yes, please confirm this quotation.",
+      "intent": "confirmation"
+    },
+    {
+      "text": "Looks good, proceed with the quotation.",
+      "intent": "confirmation"
+    },
+    {
+      "text": "I confirm the quote, please go ahead.",
+      "intent": "confirmation"
+    },
+    {
+      "text": "Yes, confirmed. Please place the order.",
+      "intent": "confirmation"
+    },
+    {
+      "text": "That price is acceptable, please confirm it.",
+      "intent": "confirmation"
+    },
+    {
+      "text": "Confirmed, proceed with this enquiry.",
+      "intent": "confirmation"
+    },
+    {
+      "text": "Yes I want to place this order now.",
+      "intent": "confirmation"
+    },
+    {
+      "text": "The quotation looks great, please finalize it.",
+      "intent": "confirmation"
+    },
+    {
+      "text": "Approved, please create the confirmed quotation.",
+      "intent": "confirmation"
+    },
+    {
+      "text": "Yes, go ahead and confirm.",
+      "intent": "confirmation"
+    },
+    {
+      "text": "No, please cancel this quotation.",
+      "intent": "decline"
+    },
+    {
+      "text": "That is too expensive for me, cancel the request.",
+      "intent": "decline"
+    },
+    {
+      "text": "No thanks, I want to cancel my draft quotation.",
+      "intent": "decline"
+    },
+    {
+      "text": "I do not wish to proceed, please cancel.",
+      "intent": "decline"
+    },
+    {
+      "text": "Please discard this quotation, not interested.",
+      "intent": "decline"
+    },
+    {
+      "text": "Cancel the order, I changed my mind.",
+      "intent": "decline"
+    },
+    {
+      "text": "No, decline this quote please.",
+      "intent": "decline"
+    },
+    {
+      "text": "Please clear my cart and cancel the quote.",
+      "intent": "decline"
+    },
+    {
+      "text": "Decline the quotation.",
+      "intent": "decline"
+    },
+    {
+      "text": "I want to reject this quote.",
+      "intent": "decline"
+    },
+    {
+      "text": "What are your business operating hours?",
+      "intent": "general_question"
+    },
+    {
+      "text": "Where is your office or warehouse located?",
+      "intent": "general_question"
+    },
+    {
+      "text": "What payment methods do you support on WhatsApp?",
+      "intent": "general_question"
+    },
+    {
+      "text": "Do you provide a manufacturer warranty on electronics products?",
+      "intent": "general_question"
+    },
+    {
+      "text": "What is your return and exchange policy?",
+      "intent": "general_question"
+    },
+    {
+      "text": "How long does shipping usually take across India?",
+      "intent": "general_question"
+    },
+    {
+      "text": "Are delivery charges included in the quotation?",
+      "intent": "general_question"
+    },
+    {
+      "text": "How can I contact a human customer support agent?",
+      "intent": "general_question"
+    },
+    {
+      "text": "Can I pick up my orders directly in person?",
+      "intent": "general_question"
+    },
+    {
+      "text": "What is your standard cancellation policy?",
+      "intent": "general_question"
+    },
+    {
+      "text": "Can you repair my broken iPhone screen today?",
+      "intent": "unsupported"
+    },
+    {
+      "text": "I want to apply for a software engineer job at your company.",
+      "intent": "unsupported"
+    },
+    {
+      "text": "Can you order a pepperoni pizza for me?",
+      "intent": "unsupported"
+    },
+    {
+      "text": "Tell me a funny joke about programming.",
+      "intent": "unsupported"
+    },
+    {
+      "text": "What is the weather forecast in Bangalore tomorrow?",
+      "intent": "unsupported"
+    },
+    {
+      "text": "Do you sell air conditioners and washing machines?",
+      "intent": "unsupported"
+    },
+    {
+      "text": "Can I get a personal loan from your company?",
+      "intent": "unsupported"
+    },
+    {
+      "text": "Write a python script to solve the knapsack problem.",
+      "intent": "unsupported"
+    },
+    {
+      "text": "Can you hack someone's social media account for me?",
+      "intent": "unsupported"
+    },
+    {
+      "text": "Where can I book cheap flight tickets to Goa?",
+      "intent": "unsupported"
+    },
+    {
+      "text": "keybord ka rate kitna hai?",
+      "intent": "product_inquiry"
+    },
+    {
+      "text": "wirles mice available hai kya?",
+      "intent": "product_inquiry"
+    },
+    {
+      "text": "moniter ka price batao",
+      "intent": "product_inquiry"
+    },
+    {
+      "text": "do you have any headphons in stock",
+      "intent": "product_inquiry"
+    },
+    {
+      "text": "webcm chahiye, stock mein hai?",
+      "intent": "product_inquiry"
+    },
+    {
+      "text": "microfon ka kitna price hai",
+      "intent": "product_inquiry"
+    },
+    {
+      "text": "kb-101 ka rate kya hai",
+      "intent": "product_inquiry"
+    },
+    {
+      "text": "ms-201 in stock?",
+      "intent": "product_inquiry"
+    },
+    {
+      "text": "price of laptop stand?",
+      "intent": "product_inquiry"
+    },
+    {
+      "text": "how much is the usb c hub",
+      "intent": "product_inquiry"
+    },
+    {
+      "text": "kitna stock hai keyboard ka",
+      "intent": "product_inquiry"
+    },
+    {
+      "text": "is the gaming headset available",
+      "intent": "product_inquiry"
+    },
+    {
+      "text": "webcam ki availability check karo",
+      "intent": "product_inquiry"
+    },
+    {
+      "text": "mouse ka latest price kya chal raha hai",
+      "intent": "product_inquiry"
+    },
+    {
+      "text": "bhai stock hai kya mice ka",
+      "intent": "product_inquiry"
+    },
+    {
+      "text": "what does the condenser mic cost",
+      "intent": "product_inquiry"
+    },
+    {
+      "text": "bhai 2 keyboard chahiye",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "mujhe 3 mice chahiye quote bhejo",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "2 wireless mice and 1 headset",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "3 mice, 1 headset quote karo",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "one MN-401",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "2 x KB-101 quote please",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "quote for 4 webcams",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "i want 5 usb hubs, send quote",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "keybord aur 2 mice ka quote banao",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "need 6 laptop stands ASAP, give me a price",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "2 keyboards and 3 mice",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "ek monitor aur do headset ka quote",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "kindly prepare quotation for 7 microphones",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "1 mechanical keyboard 2 wireless mice total price?",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "chahiye mujhe 4 keyboard, quotation banao",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "send pricing for two monitors and three webcams",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "10 piece gaming headset quote dena",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "want to order 2 hubs and 1 stand, how much total",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "quote dedo 5 keyboard ka",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "I would like to purchase 3 microphones, please quote",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "give me best price for 8 webcams",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "2 keyboards and 3 mice and 1 headset",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "yes confirm kardo",
+      "intent": "confirmation"
+    },
+    {
+      "text": "haan bhai confirm karo order",
+      "intent": "confirmation"
+    },
+    {
+      "text": "ok proceed",
+      "intent": "confirmation"
+    },
+    {
+      "text": "yup go ahead",
+      "intent": "confirmation"
+    },
+    {
+      "text": "looks fine, place the order",
+      "intent": "confirmation"
+    },
+    {
+      "text": "i approve this quote",
+      "intent": "confirmation"
+    },
+    {
+      "text": "deal, confirm it",
+      "intent": "confirmation"
+    },
+    {
+      "text": "right ahead, finalize the quotation",
+      "intent": "confirmation"
+    },
+    {
+      "text": "book it please",
+      "intent": "confirmation"
+    },
+    {
+      "text": "yes do it",
+      "intent": "confirmation"
+    },
+    {
+      "text": "shaq nahi hai, confirm kar do",
+      "intent": "confirmation"
+    },
+    {
+      "text": "nahi cancel kardo",
+      "intent": "decline"
+    },
+    {
+      "text": "order mat karo, cancel",
+      "intent": "decline"
+    },
+    {
+      "text": "too costly, drop it",
+      "intent": "decline"
+    },
+    {
+      "text": "no thanks, not interested anymore",
+      "intent": "decline"
+    },
+    {
+      "text": "cancel this quote",
+      "intent": "decline"
+    },
+    {
+      "text": "reject kar do ye order",
+      "intent": "decline"
+    },
+    {
+      "text": "forget it",
+      "intent": "decline"
+    },
+    {
+      "text": "main order nahi karna",
+      "intent": "decline"
+    },
+    {
+      "text": "nope take it off",
+      "intent": "decline"
+    },
+    {
+      "text": "cancel please",
+      "intent": "decline"
+    },
+    {
+      "text": "warranty kitni milti hai isme",
+      "intent": "general_question"
+    },
+    {
+      "text": "delivery kab tak hogi",
+      "intent": "general_question"
+    },
+    {
+      "text": "payment karne ke kya options hain",
+      "intent": "general_question"
+    },
+    {
+      "text": "kya aap cash on delivery dete ho",
+      "intent": "general_question"
+    },
+    {
+      "text": "return policy kya hai aapki",
+      "intent": "general_question"
+    },
+    {
+      "text": "gst invoice milega kya",
+      "intent": "general_question"
+    },
+    {
+      "text": "aap kis city se ship karte ho",
+      "intent": "general_question"
+    },
+    {
+      "text": "do you offer EMI on orders",
+      "intent": "general_question"
+    },
+    {
+      "text": "kya installation provide karwate ho",
+      "intent": "general_question"
+    },
+    {
+      "text": "shipping charges kitne hain",
+      "intent": "general_question"
+    },
+    {
+      "text": "can I change my delivery address later",
+      "intent": "general_question"
+    },
+    {
+      "text": "aapka support team kab available hai",
+      "intent": "general_question"
+    },
+    {
+      "text": "bhai ek joke sunao",
+      "intent": "unsupported"
+    },
+    {
+      "text": "mujhe cricket score batao",
+      "intent": "unsupported"
+    },
+    {
+      "text": "can you do my maths homework",
+      "intent": "unsupported"
+    },
+    {
+      "text": "book a cab for me to the airport",
+      "intent": "unsupported"
+    },
+    {
+      "text": "send me a recipe for paneer butter masala",
+      "intent": "unsupported"
+    },
+    {
+      "text": "I want to exchange my old smartphone",
+      "intent": "unsupported"
+    },
+    {
+      "text": "can you recharge my mobile balance",
+      "intent": "unsupported"
+    },
+    {
+      "text": "translate this paragraph into french for me",
+      "intent": "unsupported"
+    },
+    {
+      "text": "gift me a free keyboard please",
+      "intent": "unsupported"
+    },
+    {
+      "text": "what is the meaning of life",
+      "intent": "unsupported"
+    },
+    {
+      "text": "mera instagram hack kar do",
+      "intent": "unsupported"
+    },
+    {
+      "text": "are you single",
+      "intent": "unsupported"
+    },
+    {
+      "text": "bhai kab tak delivery hogi mujhe batao",
+      "intent": "general_question"
+    },
+    {
+      "text": "can I pay by credit card online",
+      "intent": "general_question"
+    },
+    {
+      "text": "keyboard ka warranty period kya hai",
+      "intent": "general_question"
+    },
+    {
+      "text": "order track karna hai mujhe",
+      "intent": "general_question"
+    },
+    {
+      "text": "price list bhejo please sab products ka",
+      "intent": "product_inquiry"
+    }
   ],
   "evaluation": [
-    {"text": "Do you have the 4K IPS monitor in stock?", "intent": "product_inquiry"},
-    {"text": "Can you check if there are mechanical keyboards available?", "intent": "product_inquiry"},
-    {"text": "What is the price of the studio mic?", "intent": "product_inquiry"},
-    {"text": "Is the ergonomic mouse in stock?", "intent": "product_inquiry"},
-
-    {"text": "Please prepare a quote for 4 wireless keyboards and 2 mice.", "intent": "quotation_request"},
-    {"text": "I would like to get a quotation for three laptop stands.", "intent": "quotation_request"},
-    {"text": "Can you send a price quote for two webcams and one headset?", "intent": "quotation_request"},
-    {"text": "I need five USB multiport hubs, please send a quotation.", "intent": "quotation_request"},
-
-    {"text": "Yes, please confirm.", "intent": "confirmation"},
-    {"text": "Confirmed, please go ahead with the order.", "intent": "confirmation"},
-    {"text": "The prices look fine, proceed with quotation.", "intent": "confirmation"},
-    {"text": "Yes I approve the quotation.", "intent": "confirmation"},
-
-    {"text": "No, cancel this request.", "intent": "decline"},
-    {"text": "Please reject the quote, I do not want it.", "intent": "decline"},
-    {"text": "I decline this quotation.", "intent": "decline"},
-    {"text": "Cancel my order please.", "intent": "decline"},
-
-    {"text": "Do your products come with warranty?", "intent": "general_question"},
-    {"text": "Where are you located in India?", "intent": "general_question"},
-    {"text": "What payment options are available?", "intent": "general_question"},
-    {"text": "What are your customer service hours?", "intent": "general_question"},
-
-    {"text": "Can you fix my laptop water damage?", "intent": "unsupported"},
-    {"text": "Can you order food delivery for me?", "intent": "unsupported"},
-    {"text": "Write an essay about artificial intelligence.", "intent": "unsupported"},
-    {"text": "Do you sell furniture or office chairs?", "intent": "unsupported"}
+    {
+      "text": "Do you have the 4K IPS monitor in stock?",
+      "intent": "product_inquiry"
+    },
+    {
+      "text": "Can you check if there are mechanical keyboards available?",
+      "intent": "product_inquiry"
+    },
+    {
+      "text": "What is the price of the studio mic?",
+      "intent": "product_inquiry"
+    },
+    {
+      "text": "Is the ergonomic mouse in stock?",
+      "intent": "product_inquiry"
+    },
+    {
+      "text": "Please prepare a quote for 4 wireless keyboards and 2 mice.",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "I would like to get a quotation for three laptop stands.",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "Can you send a price quote for two webcams and one headset?",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "I need five USB multiport hubs, please send a quotation.",
+      "intent": "quotation_request"
+    },
+    {
+      "text": "Yes, please confirm.",
+      "intent": "confirmation"
+    },
+    {
+      "text": "Confirmed, please go ahead with the order.",
+      "intent": "confirmation"
+    },
+    {
+      "text": "The prices look fine, proceed with quotation.",
+      "intent": "confirmation"
+    },
+    {
+      "text": "Yes I approve the quotation.",
+      "intent": "confirmation"
+    },
+    {
+      "text": "No, cancel this request.",
+      "intent": "decline"
+    },
+    {
+      "text": "Please reject the quote, I do not want it.",
+      "intent": "decline"
+    },
+    {
+      "text": "I decline this quotation.",
+      "intent": "decline"
+    },
+    {
+      "text": "Cancel my order please.",
+      "intent": "decline"
+    },
+    {
+      "text": "Do your products come with warranty?",
+      "intent": "general_question"
+    },
+    {
+      "text": "Where are you located in India?",
+      "intent": "general_question"
+    },
+    {
+      "text": "What payment options are available?",
+      "intent": "general_question"
+    },
+    {
+      "text": "What are your customer service hours?",
+      "intent": "general_question"
+    },
+    {
+      "text": "Can you fix my laptop water damage?",
+      "intent": "unsupported"
+    },
+    {
+      "text": "Can you order food delivery for me?",
+      "intent": "unsupported"
+    },
+    {
+      "text": "Write an essay about artificial intelligence.",
+      "intent": "unsupported"
+    },
+    {
+      "text": "Do you sell furniture or office chairs?",
+      "intent": "unsupported"
+    }
   ]
 }

@@ -12,6 +12,49 @@ credentials appear anywhere in this file.
 
 ## A. Architecture
 
+```mermaid
+flowchart TB
+    subgraph GitHub["GitHub (repo + Actions)"]
+        GH[GitHub Actions CI/CD]
+    end
+
+    subgraph Azure["Azure (resource group: <RESOURCE_GROUP>, region: <REGION>)"]
+        subgraph AppService["App Service for Containers (Linux)"]
+            WEB[Web App: <APP_NAME>.azurewebsites.net]
+            CONTAINER[Container: <ACR_NAME>.azurecr.io/quotemate:<IMAGE_TAG>]
+        end
+
+        subgraph Database["Database tier"]
+            PG[Azure Database for PostgreSQL Flexible Server]
+        end
+
+        subgraph Registry["Container registry"]
+            ACR[Azure Container Registry]
+        end
+
+        subgraph Secrets["Secrets & identity"]
+            KV[Azure Key Vault]
+            MI[Managed Identity]
+        end
+
+        subgraph Monitoring["Monitoring"]
+            AI[Application Insights]
+            ALERT[Alert rules + health probes]
+        end
+    end
+
+    Customer[Customer / webhook simulator] -->|HTTPS /webhook| WEB
+    GH -->|build + push (workflow_dispatch / OIDC)| ACR
+    ACR -->|pull image| CONTAINER
+    CONTAINER -->|DATABASE_URL| PG
+    CONTAINER -->|Key Vault references| KV
+    CONTAINER -->|Managed Identity| MI
+    WEB -->|/health probes| ALERT
+    CONTAINER -->|telemetry| AI
+```
+
+**Equivalent text layout** (for viewers that cannot render Mermaid):
+
 ```
                          GitHub (repo + Actions)
                           |  push / pull request

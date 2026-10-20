@@ -60,6 +60,29 @@ IRREGULAR_PLURALS: Dict[str, str] = {
     "mice": "mouse",
 }
 
+# Small-talk patterns that should receive a friendly automated reply instead of
+# being escalated to a human handoff. Matched against the WHOLE cleaned message
+# so that a greeting embedded in a real request ("hi, I need 2 keyboards") does
+# not mask the actual intent.
+GREETING_PATTERN = re.compile(
+    r"^(?:(?:hi|hii+|hello|hey|yo|hiya|howdy|hiya|greetings|namaste|hola)"
+    r"(?:\s+(?:there|folks|team|all|everyone|mate|friend[s]?))?"
+    r"|good\s+(?:morning|afternoon|evening)"
+    r"|what's up|whats up)[!.,?\s]*$",
+    re.IGNORECASE,
+)
+FAREWELL_PATTERN = re.compile(
+    r"^(?:bye|byee*|goodbye|see\s+ya|cya|take\s+care|good\s+night|gn"
+    r"|talk\s+later|ttyl)[!.,?\s]*$",
+    re.IGNORECASE,
+)
+THANKS_PATTERN = re.compile(
+    r"^(?:(?:thanks?|thank\s+you|thanx|thx|ty|tysm|cheers)"
+    r"(?:\s+(?:a\s+lot|so\s+much|a\s+ton|in\s+advance|ahead))?"
+    r"|appreciate\s+(?:it|that))[!.,?\s]*$",
+    re.IGNORECASE,
+)
+
 
 def normalize_match_token(token: str) -> str:
     """Reduce a token to its base form for overlap comparisons.
@@ -148,8 +171,12 @@ class NLPService:
             lowercase=True,
             sublinear_tf=True,
         )
+        # Deterministic training: random_state pins the (lbfgs) solver's
+        # internal randomness so every process trains the identical model,
+        # and the explicit solver choice avoids version-dependent defaults.
         self.classifier = LogisticRegression(
             C=5.0,
+            solver="lbfgs",
             random_state=42,
             max_iter=300,
         )
@@ -179,18 +206,25 @@ class NLPService:
         self._train_size = len(training_samples)
         self._eval_size = len(data.get("evaluation", []))
 
-    def evaluate(self) -> Dict[str, object]:
-        """Evaluate classifier on held-out evaluation examples and return metrics.
+    def evaluate(self, dataset_path: Optional[Path | str] = None) -> Dict[str, object]:
+        """Evaluate the classifier on a held-out dataset and return metrics.
+
+        Args:
+            dataset_path: Optional alternate dataset file (e.g. the never-tuned
+                held-out novelty set at ``sample_data/novelty_test.json``).
+                Defaults to the evaluation split inside the training file.
 
         Returns:
-            Dict containing train size, test size, accuracy, and classification report dict.
+            Dict containing dataset size, accuracy, per-class report, and a
+            confusion matrix keyed by ``{actual -> {predicted: count}}``.
         """
-        with open(self.dataset_path, "r", encoding="utf-8") as f:
+        target_path = Path(dataset_path) if dataset_path else self.dataset_path
+        with open(target_path, "r", encoding="utf-8") as f:
             data = json.load(f)
 
-        eval_samples = data.get("evaluation", [])
+        eval_samples = data.get("evaluation", data.get("samples", []))
         if not eval_samples:
-            raise ValueError("Evaluation dataset is empty.")
+            raise ValueError(f"Evaluation dataset is empty: {target_path}")
 
         X_test = [s["text"] for s in eval_samples]
         y_test = [s["intent"] for s in eval_samples]
@@ -199,11 +233,19 @@ class NLPService:
         predictions = self.classifier.predict(X_test_vec)
 
         report = classification_report(y_test, predictions, output_dict=True, zero_division=0)
+        labels = sorted(set(y_test) | set(predictions))
+        confusion: Dict[str, Dict[str, int]] = {
+            actual: {pred: 0 for pred in labels} for actual in labels
+        }
+        for actual, pred in zip(y_test, predictions):
+            confusion[str(actual)][str(pred)] += 1
         return {
+            "dataset": str(target_path),
             "train_size": self._train_size,
             "evaluation_size": len(eval_samples),
             "accuracy": round(float(report["accuracy"]), 4),
             "classification_report": report,
+            "confusion_matrix": confusion,
         }
 
     def predict_intent(self, text: str) -> Tuple[str, float]:
@@ -239,8 +281,14 @@ class NLPService:
         """
         lower = phrase.lower()
 
-        # Look for negative digits: e.g. "-2" or "-5"
-        if re.search(r"-\s*\d+", lower):
+        # Reject fractional quantities ("2.5 keyboards") — quantities are whole units.
+        if re.search(r"\b\d+\.\d+\b", lower):
+            return None, True, True
+
+        # Look for negative digits: e.g. "-2" or "-5". The lookbehind ensures the
+        # minus is not part of an alphanumeric token, so product names such as
+        # "7-in-1" or "USB-C" do not falsely register as a negative quantity.
+        if re.search(r"(?<![a-z0-9])-\s*\d+", lower):
             return None, True, True
 
         # Look for zero digits: e.g. "0"
@@ -311,6 +359,36 @@ class NLPService:
 
             for product in products:
                 prod_name_lower = product.name.lower()
+
+                # Exact product-ID reference (e.g. "one MN-401", "2 x KB-101"):
+                # a catalogue ID is unambiguous evidence of a match, so it wins
+                # with a perfect score and binds the quantity from its clause.
+                id_clause = None
+                for clause in clauses:
+                    if re.search(rf"\b{re.escape(product.id.lower())}\b", clause):
+                        id_clause = clause
+                        break
+                if id_clause is not None:
+                    qty, is_invalid, has_qty = self.extract_quantity_from_phrase(id_clause)
+                    if not has_qty and len(clauses) == 1:
+                        qty, is_invalid, has_qty = self.extract_quantity_from_phrase(lower_text)
+                    matched_items.append(
+                        MatchedProductItem(
+                            product_id=product.id,
+                            name=product.name,
+                            match_score=100.0,
+                            extracted_quantity=qty
+                            if (has_qty and not is_invalid and qty and qty > 0)
+                            else None,
+                            quantity_missing=not has_qty
+                            or is_invalid
+                            or (qty is not None and qty <= 0),
+                            is_ambiguous=False,
+                        )
+                    )
+                    matched_product_ids.add(product.id)
+                    continue
+
                 best_score = 0.0
                 best_clause = ""
 
@@ -409,8 +487,70 @@ class NLPService:
                 clarification_reason="Received an empty customer message.",
             )
 
+        # Deterministic small-talk handling (greetings / farewells / thanks).
+        # These are matched against the entire message BEFORE the ML classifier
+        # so a bare "hi", "thanks", or "bye" receives a friendly automated reply
+        # instead of being escalated to a human handoff. A greeting embedded in
+        # a real request ("hi, I need 2 keyboards") contains more than a
+        # greeting token and therefore falls through to normal classification.
+        if GREETING_PATTERN.match(cleaned_text):
+            return NLPAnalysisResult(
+                original_text=cleaned_text,
+                intent="greeting",
+                intent_confidence=1.0,
+                matched_products=[],
+                needs_clarification=False,
+                is_unsupported=False,
+            )
+        if FAREWELL_PATTERN.match(cleaned_text):
+            return NLPAnalysisResult(
+                original_text=cleaned_text,
+                intent="farewell",
+                intent_confidence=1.0,
+                matched_products=[],
+                needs_clarification=False,
+                is_unsupported=False,
+            )
+        if THANKS_PATTERN.match(cleaned_text):
+            return NLPAnalysisResult(
+                original_text=cleaned_text,
+                intent="thanks",
+                intent_confidence=1.0,
+                matched_products=[],
+                needs_clarification=False,
+                is_unsupported=False,
+            )
+
         intent, confidence = self.predict_intent(cleaned_text)
         matched_products = self.match_products(cleaned_text, db=db)
+
+        # Deterministic intent override.
+        # The ML classifier is trained on a small set of verbose phrasings
+        # ("prepare a quotation", "formal quote", ...) and can mislabel terse
+        # but unambiguous purchase requests such as "2 wireless mice" or
+        # "2 webcams" as product_inquiry or unsupported. When a message carries
+        # an explicit positive quantity AND a strong (non-ambiguous) catalogue
+        # match, it is by definition a request to quote those units, so we
+        # promote the intent to quotation_request. Genuine info-only inquiries
+        # ("Do you have keyboards in stock?") carry no explicit quantity and
+        # out-of-domain requests ("order a pizza") have no catalogue match, so
+        # neither is affected.
+        if intent in ("product_inquiry", "unsupported") and any(
+            p.extracted_quantity is not None
+            and p.extracted_quantity > 0
+            and not p.is_ambiguous
+            for p in matched_products
+        ):
+            intent = "quotation_request"
+        elif intent == "unsupported" and matched_products:
+            # A bare catalogue category/product name (e.g. "webcams", "mouse")
+            # can fall below the ML confidence threshold and be labelled
+            # unsupported, which would wrongly escalate to a human handoff.
+            # If the message actually matches a catalogue product, treat it as
+            # a product inquiry so the assistant can clarify quantity instead
+            # of handing off. Genuine out-of-domain requests match no products
+            # and remain unsupported.
+            intent = "product_inquiry"
 
         # Detect missing quantities
         has_missing_quantities = any(p.quantity_missing for p in matched_products)

@@ -1,0 +1,192 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: #0b0c0f;
+  color: #f1f5f9;
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    sans-serif;
+  font-weight: 400;
+  line-height: 1.5;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img, svg { display: block; max-width: 100%; }
+
+/* ── Grain texture (subtle, composited layer) ── */
+.grain {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.6'/%3E%3C/svg%3E");
+}
+
+/* ── Ambient gradient blobs (behind shell, non-distracting) ── */
+.ambient {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(64px);
+  opacity: 0.35;
+  animation: drift 14s ease-in-out infinite alternate;
+}
+.blob--violet {
+  background: #7c3aed;
+  width: 620px;
+  height: 620px;
+  top: -180px;
+  left: -210px;
+  animation-duration: 16s;
+}
+.blob--cyan {
+  background: #22d3ee;
+  width: 560px;
+  height: 560px;
+  bottom: -140px;
+  right: -190px;
+  animation-duration: 18s;
+  animation-delay: -7s;
+}
+
+@keyframes drift {
+  from {
+    transform: translate(0, 0) scale(1);
+  }
+  to {
+    transform: translate(50px, -40px) scale(1.08);
+  }
+}
+
+/* ── Glass surface — used sparingly ── */
+.glass {
+  background: rgba(25, 26, 31, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+}
+
+/* ── Premium tactile button: perspective press depth ── */
+.btn-surface {
+  perspective: 900px;
+  display: inline-block;
+}
+.btn-face {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transform: translateZ(28px);
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background-color 0.2s ease,
+    border-color 0.2s ease, color 0.2s ease;
+  box-shadow: 0 14px 28px -10px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+.btn-face:where(button):hover:not(:disabled) {
+  transform: translateZ(44px);
+  box-shadow: 0 18px 36px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+.btn-face:where(button):active:not(:disabled) {
+  transform: translateZ(10px) translateY(2px);
+  box-shadow: 0 6px 12px -6px rgba(0, 0, 0, 0.5);
+}
+
+/* ── Accessible focus rings ── */
+.focus-ring:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.45), 0 0 0 1px #7c3aed;
+}
+
+/* ── Utilities ── */
+.text-balance {
+  text-wrap: balance;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  .blob {
+    animation: none;
+  }
+  .grain {
+    opacity: 0.015;
+  }
+}
+
+/* Tailwind layer base tweaks */
+@layer base {
+  h1, h2, h3, h4 {
+    letter-spacing: -0.02em;
+  }
+  h1 {
+    font-size: 1.25rem;
+    font-weight: 600;
+  }
+  h2 {
+    font-size: 1rem;
+    font-weight: 600;
+  }
+}
+
+@layer components {
+  .panel {
+    background: #111216;
+    border: 1px solid #2d2e34;
+    border-radius: 16px;
+  }
+  .panel-lift {
+    background: #16171c;
+    border: 1px solid #2d2e34;
+    border-radius: 16px;
+    box-shadow: var(--shadow-premium, 0 20px 40px -10px rgba(0, 0, 0, 0.55));
+  }
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border: 1px solid transparent;
+  }
+}

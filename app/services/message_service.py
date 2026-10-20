@@ -7,25 +7,24 @@ confirmation/decline handling, and structured reply storage.
 Handoff events (Milestone 7) are built on top of this lifecycle later.
 """
 
-from decimal import Decimal
+import logging
 import re
 from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.config import HANDOFF_CONTEXT_MESSAGES, MAX_QTY
 from app.database import SessionLocal
 from app.models import MessageModel, ProductModel
 from app.schemas import (
     CartContents,
     IncomingMessage,
     MatchedProductItem,
-    NLPAnalysisResult,
     ProcessedMessageReply,
     QuotationBreakdown,
 )
 from app.services.cart_service import cart_service
-from app.services.catalogue_service import catalogue_service
 from app.services.conversation_service import ConversationState, conversation_service
 from app.services.nlp_service import nlp_service
 from app.services.handoff_service import handoff_service
@@ -34,6 +33,8 @@ from app.services.quotation_service import (
     format_stock_issues,
     quotation_service,
 )
+
+logger = logging.getLogger("quotemate.messages")
 
 
 def _filter_effective_products(
@@ -73,6 +74,18 @@ def _filter_effective_products(
 
     effective.sort(key=lambda x: x.match_score, reverse=True)
     return effective
+
+
+def _clamp_quantity(qty: int) -> tuple[int, bool]:
+    """Clamp an extracted quantity to the configured MAX_QTY.
+
+    Returns:
+        Tuple (effective_quantity, was_clamped). Word-based quantities such as
+        "a hundred" are clamped by the same rule as digits.
+    """
+    if qty > MAX_QTY:
+        return MAX_QTY, True
+    return qty, False
 
 
 def _format_cart(cart: CartContents) -> str:
@@ -144,11 +157,23 @@ class MessageService:
             owns_session = True
 
         try:
-            # --- 1. Duplicate event protection --------------------------------
+            # --- 1. Duplicate event protection ------------------------------
+            # Idempotency is keyed on the COMPOSITE (sender_id, message_id).
+            # The same message_id arriving from a *different* sender is a
+            # distinct event and is processed independently — one customer's
+            # reply is never replayed to another customer.
             existing = session.scalar(
-                select(MessageModel).where(MessageModel.message_id == payload.message_id)
+                select(MessageModel).where(
+                    MessageModel.message_id == payload.message_id,
+                    MessageModel.sender_id == payload.sender_id,
+                )
             )
             if existing is not None:
+                logger.info(
+                    "duplicate_event message_id=%s sender_id=%s — replaying stored reply",
+                    payload.message_id,
+                    payload.sender_id,
+                )
                 cart = cart_service.get_cart(payload.sender_id, db=session)
                 conv = conversation_service.get_by_sender(payload.sender_id, db=session)
                 quote = quotation_service.get_active_breakdown(payload.sender_id, db=session)
@@ -183,10 +208,13 @@ class MessageService:
             try:
                 session.flush()
             except IntegrityError:
-                # Concurrent race condition on unique message_id
+                # Concurrent race condition on the composite (sender_id, message_id)
                 session.rollback()
                 existing = session.scalar(
-                    select(MessageModel).where(MessageModel.message_id == payload.message_id)
+                    select(MessageModel).where(
+                        MessageModel.message_id == payload.message_id,
+                        MessageModel.sender_id == payload.sender_id,
+                    )
                 )
                 cart = cart_service.get_cart(payload.sender_id, db=session)
                 conv = conversation_service.get_by_sender(payload.sender_id, db=session)
@@ -197,9 +225,11 @@ class MessageService:
                 return ProcessedMessageReply(
                     message_id=payload.message_id,
                     sender_id=payload.sender_id,
-                    reply_text=existing.response_text
-                    if existing and existing.response_text
-                    else "This message was already received. No action taken.",
+                    reply_text=(
+                        existing.response_text
+                        if existing and existing.response_text
+                        else "This message was already received. No action taken."
+                    ),
                     duplicated=True,
                     conversation_state=conv.state if conv else None,
                     cart=cart,
@@ -261,8 +291,13 @@ class MessageService:
                         # Successful quantity follow-up: complete pending addition
                         product = session.get(ProductModel, conv.pending_product_id)
                         if product:
+                            effective_qty, was_clamped = _clamp_quantity(qty)
                             cart_service.upsert_item(
-                                payload.sender_id, product.id, qty, mode="set", db=session
+                                payload.sender_id,
+                                product.id,
+                                effective_qty,
+                                mode="set",
+                                db=session,
                             )
                             conversation_service.set_state(
                                 payload.sender_id,
@@ -271,8 +306,15 @@ class MessageService:
                                 db=session,
                             )
                             cart = cart_service.get_cart(payload.sender_id, db=session)
+                            clamp_note = (
+                                f"\n\nNote: the maximum order quantity per item is {MAX_QTY} "
+                                f"units, so I've added {effective_qty} x {product.name}."
+                                if was_clamped
+                                else ""
+                            )
                             prefix = (
-                                f"Added {qty} x {product.name} to your cart.\n\n"
+                                f"Added {effective_qty} x {product.name} to your cart."
+                                f"{clamp_note}\n\n"
                                 f"{_format_cart(cart)}"
                             )
                             reply_text, needs_clarification, active_quotation = (
@@ -505,19 +547,33 @@ class MessageService:
 
                     else:
                         # All products have valid positive quantities
+                        clamp_notes: list[str] = []
                         for p in effective_products:
                             if p.extracted_quantity and p.extracted_quantity > 0:
+                                effective_qty, was_clamped = _clamp_quantity(
+                                    p.extracted_quantity
+                                )
                                 cart_service.upsert_item(
                                     payload.sender_id,
                                     p.product_id,
-                                    p.extracted_quantity,
+                                    effective_qty,
                                     mode="set",
                                     db=session,
                                 )
+                                if was_clamped:
+                                    clamp_notes.append(
+                                        f"Note: the maximum order quantity per item is "
+                                        f"{MAX_QTY} units, so {p.name} was added as "
+                                        f"{effective_qty} units."
+                                    )
 
                         cart = cart_service.get_cart(payload.sender_id, db=session)
+                        clamp_block = (
+                            "\n\n" + "\n".join(clamp_notes) if clamp_notes else ""
+                        )
                         prefix = (
-                            "I have added the requested items to your cart:\n\n"
+                            "I have added the requested items to your cart:"
+                            f"{clamp_block}\n\n"
                             f"{_format_cart(cart)}"
                         )
                         reply_text, needs_clarification, active_quotation = (
@@ -567,6 +623,31 @@ class MessageService:
                         )
                         needs_clarification = True
 
+                elif intent in ("greeting", "farewell", "thanks"):
+                    # --- Friendly small-talk handling --------------------------
+                    # Greetings, farewells, and thanks get an automated reply
+                    # and never escalate to a human handoff. The conversation
+                    # state is deliberately NOT changed so that a mid-flow
+                    # "hi" or "thanks" cannot wipe a pending quotation.
+                    reply_text = {
+                        "greeting": (
+                            "Hello! 👋 Welcome to QuoteMate. I'm your sales assistant — "
+                            "I can help you browse our electronics catalogue, check "
+                            "prices and stock, and prepare a quotation.\n\n"
+                            "What are you looking for today?"
+                        ),
+                        "farewell": (
+                            "Thank you for chatting with QuoteMate! When you're ready "
+                            "to place an order or need a quotation, just send us a "
+                            "message. Have a great day! 😊"
+                        ),
+                        "thanks": (
+                            "You're welcome! If you'd like to adjust your quotation, "
+                            "add more items, or confirm your order, I'm right here. "
+                            "Happy to help! 😊"
+                        ),
+                    }[intent]
+
                 elif intent == "unsupported" or is_unsupported:
                     # --- Human handoff trigger -------------------------------
                     # Only escalate genuine out-of-domain requests (is_unsupported).
@@ -581,6 +662,8 @@ class MessageService:
                     )
 
                     context_lines = [
+                        f"Sender: {payload.sender_id}",
+                        f"Event timestamp: {payload.timestamp.isoformat()}",
                         f"Latest message: {user_text}",
                         f"Reason: {analysis.clarification_reason or 'Unsupported intent'}",
                         f"Conversation state: {conv.state if conv else 'UNKNOWN'}",
@@ -596,6 +679,18 @@ class MessageService:
                             f"Active quotation: {quote.quotation_id} "
                             f"(status={quote.status}, total={quote.total})"
                         )
+                    recent = session.scalars(
+                        select(MessageModel)
+                        .where(MessageModel.sender_id == payload.sender_id)
+                        .order_by(MessageModel.id.desc())
+                        .limit(HANDOFF_CONTEXT_MESSAGES)
+                    ).all()
+                    if recent:
+                        context_lines.append("Recent conversation:")
+                        for m in reversed(recent):
+                            context_lines.append(f"  [in ] {m.text}")
+                            if m.response_text:
+                                context_lines.append(f"  [out] {m.response_text}")
                     handoff_context = "\n".join(context_lines)
 
                     handoff = handoff_service.create_handoff(
@@ -638,6 +733,18 @@ class MessageService:
                 active_quotation = quotation_service.get_active_breakdown(
                     payload.sender_id, db=session
                 )
+
+            logger.info(
+                "processed_event message_id=%s sender_id=%s intent=%s state=%s "
+                "cart_items=%d enquiry_id=%s handoff_id=%s",
+                payload.message_id,
+                payload.sender_id,
+                intent,
+                final_conv.state if final_conv else None,
+                len(current_cart.items),
+                active_quotation.enquiry_id if active_quotation else None,
+                handoff_id,
+            )
 
             return ProcessedMessageReply(
                 message_id=payload.message_id,
