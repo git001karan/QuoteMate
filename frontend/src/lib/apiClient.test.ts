@@ -45,7 +45,8 @@ describe('api.health', () => {
   })
 
   it('throws ApiError on non-ok response', async () => {
-    ;(globalThis.fetch as any).mockResolvedValueOnce({
+    const mockedFetch = globalThis.fetch as unknown as { mockResolvedValueOnce: (val: unknown) => void }
+    mockedFetch.mockResolvedValueOnce({
       ok: false,
       status: 503,
       json: async () => ({ detail: 'Service unavailable' }),

@@ -29,13 +29,14 @@ export function useConnection(options?: { intervalMs?: number }) {
     let timer: ReturnType<typeof setTimeout>
 
     const loop = async () => {
+      if (!active) return
       await check()
       if (active) timer = setTimeout(loop, intervalMs)
     }
 
     // Initial check immediately on mount; keep polling so the UI recovers
     // automatically when the backend comes back online.
-    check()
+    void loop()
     return () => {
       active = false
       clearTimeout(timer)

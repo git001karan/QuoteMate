@@ -39,7 +39,8 @@ describe('useCatalogue', () => {
   })
 
   it('sets error when fetch fails', async () => {
-    ;(globalThis.fetch as any).mockRejectedValueOnce(new Error('Network error'))
+    const mockedFetch = globalThis.fetch as unknown as { mockRejectedValueOnce: (err: unknown) => void }
+    mockedFetch.mockRejectedValueOnce(new Error('Network error'))
 
     const { result } = renderHook(() => useCatalogue())
 

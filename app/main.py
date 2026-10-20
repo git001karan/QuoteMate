@@ -87,7 +87,9 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 # controlled by the CORS_ORIGINS env var (comma-separated) and default to the
 # local Vite dev server only. No credentials other than same-origin cookies are
 # needed; allow_credentials=True keeps the preflight response explicit.
-_cors_origins = _os.getenv("CORS_ORIGINS", "http://localhost:5173")
+_cors_origins = _os.getenv(
+    "CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
+)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[o.strip() for o in _cors_origins.split(",") if o.strip()],
